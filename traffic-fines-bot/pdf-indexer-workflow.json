@@ -1,0 +1,101 @@
+{
+  "name": "Traffic Fines - PDF Indexer",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 0],
+      "id": "manual-trigger",
+      "name": "Run Manually"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "filePath": "/data/traffic-fines.pdf"
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [-200, 0],
+      "id": "extract-pdf",
+      "name": "Extract Text from PDF"
+    },
+    {
+      "parameters": {
+        "chunkSize": 1000,
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [0, 200],
+      "id": "text-splitter",
+      "name": "Text Splitter"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [200, 200],
+      "id": "embeddings",
+      "name": "OpenAI Embeddings",
+      "credentials": {
+        "openAiApi": {
+          "id": "23mseFmTKiVo6pxW",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "documents",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "supabase-vector",
+      "name": "Store in Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CRED_ID",
+          "name": "Supabase Traffic Fines"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst text = items[0].json.text || items[0].json.data || '';\n\n// Return the text for processing\nreturn [{ json: { text, pageContent: text, metadata: { source: 'traffic-fines.pdf' } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-100, 0],
+      "id": "prepare-text",
+      "name": "Prepare Text"
+    }
+  ],
+  "connections": {
+    "Run Manually": {
+      "main": [[{"node": "Extract Text from PDF", "type": "main", "index": 0}]]
+    },
+    "Extract Text from PDF": {
+      "main": [[{"node": "Prepare Text", "type": "main", "index": 0}]]
+    },
+    "Prepare Text": {
+      "main": [[{"node": "Store in Supabase", "type": "main", "index": 0}]]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [[{"node": "Store in Supabase", "type": "ai_textSplitter", "index": 0}]]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [[{"node": "Store in Supabase", "type": "ai_embedding", "index": 0}]]
+    }
+  }
+}

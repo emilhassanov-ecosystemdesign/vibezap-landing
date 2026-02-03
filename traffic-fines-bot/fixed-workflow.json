@@ -1,0 +1,111 @@
+{
+  "name": "Traffic Fines RAG Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "d80239b3-0bce-47d0-8083-f99a7fe50e3f",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-208, -16],
+      "webhookId": "27f257b0-a6a7-4cb6-b86c-818cebe405f3",
+      "credentials": {
+        "telegramApi": {
+          "id": "cVy8efp2L5HJNB84",
+          "name": "Personal AI Assistant"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const knowledgeBase={articles:[{id:\"327\",title:\"Traffic Rules / Yol Qaydaları\",content:[{v:\"Not following road signs / Yol nişanlarına riayət edilməməsi\",f:40,p:0},{v:\"Running red light / Qırmızı işıqda keçmə\",f:100,p:3},{v:\"Driving in bicycle lanes\",f:100,p:2},{v:\"Railway crossing violations\",f:100,p:4},{v:\"Wrong-way on one-way street\",f:150,p:4}]},{id:\"328\",title:\"Speeding / Sürət aşması\",content:[{v:\"10-20 km/h over limit\",f:10,p:0},{v:\"21-40 km/h over limit\",f:50,p:2},{v:\"41-60 km/h over limit\",f:200,p:3},{v:\"61+ km/h over limit\",f:300,p:4}]},{id:\"329\",title:\"Safety / Təhlükəsizlik\",content:[{v:\"No seatbelt / Kəmər bağlamamaq\",f:40,p:0},{v:\"No helmet (motorcycle) / Dəbilqəsiz\",f:40,p:0},{v:\"Improper lights use\",f:30,p:0}]},{id:\"330\",title:\"Pedestrians / Piyadalar\",content:[{v:\"Not yielding at crosswalk\",f:50,p:0},{v:\"Not yielding when turning\",f:50,p:0}]},{id:\"331\",title:\"Emergency Vehicles\",content:[{v:\"Not yielding to emergency vehicles\",f:100,p:3}]},{id:\"332\",title:\"No License / Lisenziyasız\",content:[{v:\"No power of attorney\",f:40,p:0},{v:\"Driving without license\",f:200,p:0},{v:\"No license (repeat)\",f:400,p:0},{v:\"No license + damage\",f:500,p:\"1mo detention\"}]},{id:\"333\",title:\"DUI / Alkoqol\",content:[{v:\"Driving under influence\",f:400,p:\"License 6mo-1yr\"},{v:\"DUI repeat\",f:500,p:\"License 2yr+15d detention\"},{v:\"DUI + damage\",f:700,p:\"License 2yr+detention\"}]},{id:\"334\",title:\"No License + DUI\",content:[{v:\"No license + drunk\",f:500,p:\"15d detention\"},{v:\"No license + drunk + damage\",f:800,p:\"1-2mo detention\"}]},{id:\"342\",title:\"Vehicle Issues\",content:[{v:\"Operation rules violation\",f:40,p:0},{v:\"Technical condition violation\",f:150,p:0},{v:\"Loud exhaust\",f:500,p:0},{v:\"Loud exhaust (repeat)\",f:1000,p:0},{v:\"License plate violation\",f:100,p:4}]},{id:\"343\",title:\"Refusing Test / Müayinədən imtina\",content:[{v:\"Refusing sobriety test\",f:400,p:\"License 6mo-1yr\"},{v:\"Refusing test (repeat)\",f:500,p:\"License 2yr+15d\"}]},{id:\"346\",title:\"Stopping / Dayanma\",content:[{v:\"General stopping violation\",f:20,p:0},{v:\"Stopping at bus stop\",f:40,p:2},{v:\"Blocking public transport\",f:100,p:4},{v:\"Double parking\",f:80,p:2},{v:\"Near intersection\",f:40,p:2},{v:\"In bike lane\",f:100,p:2},{v:\"In bus lane\",f:100,p:2},{v:\"On sidewalk\",f:60,p:2}]},{id:\"346-1\",title:\"Parking / Parklanma\",content:[{v:\"Exceeding paid parking\",f:20,p:0},{v:\"Improper parking\",f:20,p:0},{v:\"Disabled spot violation\",f:60,p:0},{v:\"Over 24h parking\",f:20,p:0}]},{id:\"469\",title:\"Insurance / Sığorta\",content:[{v:\"No insurance (individual)\",f:50,p:0},{v:\"No insurance (official)\",f:100,p:0},{v:\"No insurance (company)\",f:300,p:0}]},{id:\"511\",title:\"Hooliganism / Xuliqanlıq\",content:[{v:\"Racing/wheelies/burnouts\",f:\"500-750\",p:\"License 1yr+detention\"},{v:\"Hooliganism (repeat)\",f:\"750-1000\",p:\"License 2yr+1-2mo\"},{v:\"Racing 60+ over\",f:\"2000-4000\",p:\"License 2yr+detention\"}]}]};\n\nconst msg = $input.first().json.message;\nif (!msg || !msg.text) return {json: {skip: true}};\n\nconst userMessage = msg.text;\nconst chatId = msg.chat.id;\nconst q = userMessage.toLowerCase();\n\nconst kw = {\n  'speed':['328'],'sürət':['328'],'fast':['328'],\n  'alcohol':['333','334'],'alkoqol':['333','334'],'drunk':['333','334'],'sərxoş':['333'],\n  'license':['332'],'lisenziya':['332'],\n  'seatbelt':['329'],'kəmər':['329'],'belt':['329'],'helmet':['329'],\n  'parking':['346-1'],'parklanma':['346-1'],'dayanma':['346'],'stop':['346'],\n  'pedestrian':['330'],'piyada':['330'],\n  'red light':['327'],'qırmızı':['327'],'svetofor':['327'],\n  'insurance':['469'],'sığorta':['469'],\n  'emergency':['331'],'test':['343'],'müayinə':['343'],\n  'exhaust':['342'],'səs':['342'],\n  'racing':['511'],'yarış':['511'],'drift':['511'],'wheelie':['511']\n};\n\nconst matched = new Set();\nfor (const [k, ids] of Object.entries(kw)) {\n  if (q.includes(k)) ids.forEach(id => matched.add(id));\n}\n\nif (matched.size === 0) {\n  for (const a of knowledgeBase.articles) {\n    if (q.split(' ').filter(w => w.length > 3).some(w => JSON.stringify(a).toLowerCase().includes(w))) {\n      matched.add(a.id);\n    }\n  }\n}\n\nconst results = knowledgeBase.articles.filter(a => matched.has(a.id)).slice(0, 3);\nif (results.length === 0) {\n  results.push(knowledgeBase.articles[1], knowledgeBase.articles[2]);\n}\n\nlet ctx = \"AZERBAIJAN TRAFFIC FINES:\";\nfor (const a of results) {\n  ctx += ` ${a.title}:`;\n  for (const i of a.content) {\n    ctx += ` ${i.v}: ${i.f} AZN${i.p ? `, ${i.p} pts` : ''};`;\n  }\n}\n\n// Build the request body for Groq\nconst requestBody = {\n  model: \"llama-3.1-8b-instant\",\n  messages: [\n    {\n      role: \"system\",\n      content: \"You answer questions about Azerbaijan traffic fines. Reply in the same language as the question (English or Azerbaijani). Be concise. Always state fine in AZN and penalty points.\"\n    },\n    {\n      role: \"user\",\n      content: ctx + \" Question: \" + userMessage\n    }\n  ],\n  temperature: 0.3,\n  max_tokens: 400\n};\n\nreturn {\n  json: {\n    userMessage,\n    chatId,\n    context: ctx,\n    requestBody\n  }\n};"
+      },
+      "id": "b93831c9-e454-496c-91d4-17926c98f63c",
+      "name": "Search Knowledge Base",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [32, -16]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {}
+      },
+      "id": "0842c6d5-d720-48fa-ba8b-63303d9631a8",
+      "name": "Groq LLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [256, -16],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "5E3fBA73Vh7n8KTl",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\nif (resp.choices && resp.choices[0]) {\n  return { json: { text: resp.choices[0].message.content } };\n}\nreturn { json: { text: \"Sorry, I could not process your request.\" } };"
+      },
+      "id": "3c02a2f4-8059-4ed1-8bf3-acee8d0d6f1d",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [496, -16]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Search Knowledge Base').item.json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "id": "0c675ca8-ea0c-4f45-82bc-09c2b38bf82f",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, -16],
+      "webhookId": "767796dd-82e3-40ca-ab2c-b52a6b910c49",
+      "credentials": {
+        "telegramApi": {
+          "id": "cVy8efp2L5HJNB84",
+          "name": "Personal AI Assistant"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{"node": "Search Knowledge Base", "type": "main", "index": 0}]]
+    },
+    "Search Knowledge Base": {
+      "main": [[{"node": "Groq LLM", "type": "main", "index": 0}]]
+    },
+    "Groq LLM": {
+      "main": [[{"node": "Parse Response", "type": "main", "index": 0}]]
+    },
+    "Parse Response": {
+      "main": [[{"node": "Send Response", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "name": "Traffic Fines RAG Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Traffic Fines Knowledge Base\nconst knowledgeBase = {\n  \"articles\": [\n    {\n      \"id\": \"327\",\n      \"title\": \"Yol Hərəkəti Qaydalarının Pozulması / Traffic Rules Violations\",\n      \"content\": [\n        {\"violation\": \"Yol nişanlarına riayət edilməməsi / Not following road signs\", \"fine\": 40, \"points\": 0},\n        {\"violation\": \"Designated lane violations (5.9, 5.10.1-5.10.3 signs) / Xüsusi zolaqda hərəkət\", \"fine\": 100, \"points\": 2},\n        {\"violation\": \"Driving in bicycle lanes / Velosiped yollarında hərəkət\", \"fine\": 100, \"points\": 2},\n        {\"violation\": \"Running red light / Svetoforun qadağanedici işarəsinə əməl etməməsi\", \"fine\": 100, \"points\": 3},\n        {\"violation\": \"Railway crossing violations / Dəmiryol keçidlərindən keçmə qaydalarının pozulması\", \"fine\": 100, \"points\": 4},\n        {\"violation\": \"Wrong-way driving on one-way street / Birtərəfli yollarda əks istiqamətdə hərəkət\", \"fine\": 150, \"points\": 4},\n        {\"violation\": \"Leaving accident scene / Yol hadisəsi yerindən yayınma\", \"fine\": \"Criminal liability\", \"points\": \"License suspension\"},\n        {\"violation\": \"Accumulating 20+ points in 1 year\", \"fine\": 0, \"points\": \"License suspended 6 months\"}\n      ]\n    },\n    {\n      \"id\": \"328\",\n      \"title\": \"Sürət Həddi Aşması / Speeding\",\n      \"content\": [\n        {\"violation\": \"Exceeding speed limit by 10-20 km/h / 10-20 km/s aşma\", \"fine\": 10, \"points\": 0},\n        {\"violation\": \"Exceeding speed limit by 21-40 km/h / 21-40 km/s aşma\", \"fine\": 50, \"points\": 2},\n        {\"violation\": \"Exceeding speed limit by 41-60 km/h / 41-60 km/s aşma\", \"fine\": 200, \"points\": 3},\n        {\"violation\": \"Exceeding speed limit by 61+ km/h / 61+ km/s aşma\", \"fine\": 300, \"points\": 4}\n      ]\n    },\n    {\n      \"id\": \"329\",\n      \"title\": \"Təhlükəsizlik Avadanlığı / Safety Equipment\",\n      \"content\": [\n        {\"violation\": \"Not wearing seatbelt / Təhlükəsizlik kəmərini bağlamadan idarə etmə\", \"fine\": 40, \"points\": 0},\n        {\"violation\": \"Riding motorcycle without helmet / Motodəbilqə taxmadan idarə etmə\", \"fine\": 40, \"points\": 0},\n        {\"violation\": \"Improper use of lights / İşıq cihazlarından istifadə pozulması\", \"fine\": 30, \"points\": 0}\n      ]\n    },\n    {\n      \"id\": \"330\",\n      \"title\": \"Piyadaya Yol Verilməməsi / Not Yielding to Pedestrians\",\n      \"content\": [\n        {\"violation\": \"Not yielding at unregulated crosswalk / Nizamlanmayan piyada keçidində\", \"fine\": 50, \"points\": 0},\n        {\"violation\": \"Not yielding when turning at intersection / Yolayrıcında dönerək piyadaya yol verməmə\", \"fine\": 50, \"points\": 0}\n      ]\n    },\n    {\n      \"id\": \"331\",\n      \"title\": \"Xüsusi Nəqliyyata Yol Verilməməsi / Not Yielding to Emergency Vehicles\",\n      \"content\": [\n        {\"violation\": \"Not yielding to emergency vehicles / Xüsusi nəqliyyata yol verilməməsi\", \"fine\": 100, \"points\": 3}\n      ]\n    },\n    {\n      \"id\": \"332\",\n      \"title\": \"Lisenziyasız İdarəetmə / Driving Without License\",\n      \"content\": [\n        {\"violation\": \"Driving without power of attorney / Etibarnamə olmadan idarəetmə\", \"fine\": 40, \"points\": 0},\n        {\"violation\": \"Driving without license / Lisenziyasız idarəetmə\", \"fine\": 200, \"points\": 0},\n        {\"violation\": \"Driving without license (repeat within 1 year) / Təkrar lisenziyasız\", \"fine\": 400, \"points\": 0},\n        {\"violation\": \"Driving without license + causing damage / Lisenziyasız + zərər\", \"fine\": 500, \"points\": \"1 month detention\"}\n      ]\n    },\n    {\n      \"id\": \"333\",\n      \"title\": \"Alkoqol Altında İdarəetmə / Drunk Driving (DUI)\",\n      \"content\": [\n        {\"violation\": \"Driving under influence / Alkoqol altında idarəetmə\", \"fine\": 400, \"points\": \"License 6mo-1yr suspension\"},\n        {\"violation\": \"DUI repeat within 1 year / Alkoqol təkrar\", \"fine\": 500, \"points\": \"License 2yr + 15 days detention\"},\n        {\"violation\": \"DUI with damage / Alkoqol + zərər\", \"fine\": 700, \"points\": \"License 2yr + 15d-1mo detention\"}\n      ]\n    },\n    {\n      \"id\": \"334\",\n      \"title\": \"Lisenziyasız + Alkoqol / No License + DUI\",\n      \"content\": [\n        {\"violation\": \"No license + DUI / Lisenziyasız + alkoqol\", \"fine\": 500, \"points\": \"Up to 15 days detention\"},\n        {\"violation\": \"No license + DUI (repeat) / Təkrar\", \"fine\": 0, \"points\": \"15d-1mo detention\"},\n        {\"violation\": \"No license + DUI + damage / + zərər\", \"fine\": 800, \"points\": \"1-2 months detention\"}\n      ]\n    },\n    {\n      \"id\": \"335\",\n      \"title\": \"Qanunsuz Nəqliyyat Verilməsi / Unlawful Vehicle Transfer\",\n      \"content\": [\n        {\"violation\": \"Giving vehicle to unlicensed person (individual)\", \"fine\": 60, \"points\": 0},\n        {\"violation\": \"Giving vehicle to unlicensed person (official)\", \"fine\": 200, \"points\": 0},\n        {\"violation\": \"Giving vehicle to unlicensed person (legal entity)\", \"fine\": 2000, \"points\": 0},\n        {\"violation\": \"Repeat within 1 year (individual/official/legal)\", \"fine\": \"100/300/3000\", \"points\": 0},\n        {\"violation\": \"With damage (individual/official/legal)\", \"fine\": \"180/500/5000\", \"points\": 0}\n      ]\n    },\n    {\n      \"id\": \"338\",\n      \"title\": \"Piyadalar və Digər İştirakçılar / Pedestrians & Others\",\n      \"content\": [\n        {\"violation\": \"Pedestrian traffic violation / Piyada qaydaları pozması\", \"fine\": 20, \"points\": 0},\n        {\"violation\": \"Pedestrian crossing 80km/h road improperly\", \"fine\": 40, \"points\": 0},\n        {\"violation\": \"Passenger safety violation / Sərnişin təhlükəsizliyi\", \"fine\": 30, \"points\": 0},\n        {\"violation\": \"Cyclist/moped violations / Velosipedçi pozması\", \"fine\": 40, \"points\": 0}\n      ]\n    },\n    {\n      \"id\": \"342\",\n      \"title\": \"Nəqliyyat Vasitəsi İstismarı / Vehicle Operation Violations\",\n      \"content\": [\n        {\"violation\": \"Operation rules violation / İstismar qaydaları pozulması\", \"fine\": 40, \"points\": 0},\n        {\"violation\": \"Technical condition violation / Texniki vəziyyət pozulması\", \"fine\": 150, \"points\": 0},\n        {\"violation\": \"Increasing engine sound/exhaust / Mühərrik səs gücü artırma\", \"fine\": 500, \"points\": 0},\n        {\"violation\": \"Exhaust modification (repeat) / Səs gücü təkrar\", \"fine\": 1000, \"points\": 0},\n        {\"violation\": \"License plate violation / Qeydiyyat nişanı pozulması\", \"fine\": 100, \"points\": 4}\n      ]\n    },\n    {\n      \"id\": \"343\",\n      \"title\": \"Tibbi Müayinədən İmtina / Refusing Medical Examination\",\n      \"content\": [\n        {\"violation\": \"Refusing sobriety test / Tibbi müayinədən imtina\", \"fine\": 400, \"points\": \"License 6mo-1yr suspension\"},\n        {\"violation\": \"Refusing test (repeat) / İmtina təkrar\", \"fine\": 500, \"points\": \"License 2yr + 15 days detention\"}\n      ]\n    },\n    {\n      \"id\": \"346\",\n      \"title\": \"Dayanma Qaydaları / Stopping Rules\",\n      \"content\": [\n        {\"violation\": \"General stopping violations / Ümumi dayanma qaydaları\", \"fine\": 20, \"points\": 0},\n        {\"violation\": \"Stopping at public transport stop / İctimai nəqliyyat dayanacağında\", \"fine\": 40, \"points\": 2},\n        {\"violation\": \"Blocking public transport boarding area\", \"fine\": 100, \"points\": 4},\n        {\"violation\": \"Double parking / İkinci cərgədə dayanma\", \"fine\": 80, \"points\": 2},\n        {\"violation\": \"Stopping near intersection / Kəsişmə yaxınlığında\", \"fine\": 40, \"points\": 2},\n        {\"violation\": \"Non-taxi at taxi stand / Taksi duracağında\", \"fine\": 40, \"points\": 2},\n        {\"violation\": \"Stopping in bicycle lane / Velosiped yolunda\", \"fine\": 100, \"points\": 2},\n        {\"violation\": \"Stopping in bus lane / İctimai nəqliyyat zolağında\", \"fine\": 100, \"points\": 2},\n        {\"violation\": \"Stopping on sidewalk / Səkilərdə dayanma\", \"fine\": 60, \"points\": 2}\n      ]\n    },\n    {\n      \"id\": \"346-1\",\n      \"title\": \"Parklanma Qaydaları / Parking Rules\",\n      \"content\": [\n        {\"violation\": \"Exceeding paid parking time / Ödənişli parklanma vaxtı aşma\", \"fine\": 20, \"points\": 0},\n        {\"violation\": \"Improper parking method / Parklanma üsulu pozulması\", \"fine\": 20, \"points\": 0},\n        {\"violation\": \"Parking in disabled spot / Əlil yerində parklanma\", \"fine\": 60, \"points\": 0},\n        {\"violation\": \"Parking over 24 hours / 24 saatdan artıq\", \"fine\": 20, \"points\": 0},\n        {\"violation\": \"Parking in service vehicle spot / Xidməti yerdə\", \"fine\": 40, \"points\": 0}\n      ]\n    },\n    {\n      \"id\": \"469\",\n      \"title\": \"İcbari Sığorta / Mandatory Insurance\",\n      \"content\": [\n        {\"violation\": \"No mandatory insurance (individual) / İcbari sığorta yoxdur\", \"fine\": 50, \"points\": 0},\n        {\"violation\": \"No mandatory insurance (official)\", \"fine\": 100, \"points\": 0},\n        {\"violation\": \"No mandatory insurance (legal entity)\", \"fine\": 300, \"points\": 0}\n      ]\n    },\n    {\n      \"id\": \"511\",\n      \"title\": \"Avtoxuliqanlıq / Road Hooliganism\",\n      \"content\": [\n        {\"violation\": \"Street racing/wheelies/burnouts / Sürət yarışı, təkər qaldırma\", \"fine\": \"500-750\", \"points\": \"License 1yr + 15d-1mo detention\"},\n        {\"violation\": \"Road hooliganism (repeat) / Avtoxuliqanlıq təkrar\", \"fine\": \"750-1000\", \"points\": \"License 2yr + 1-2mo detention\"},\n        {\"violation\": \"Street racing 60+ km/h over limit\", \"fine\": \"2000-4000\", \"points\": \"License 2yr + 1-2mo detention\"}\n      ]\n    }\n  ]\n};\n\n// Get the user's question\nconst userMessage = $input.first().json.message.text;\nconst chatId = $input.first().json.message.chat.id;\n\n// Simple RAG: Search for relevant articles\nfunction searchKnowledgeBase(query) {\n  const queryLower = query.toLowerCase();\n  const results = [];\n  \n  // Keywords mapping\n  const keywords = {\n    'speed': ['328', 'sürət'],\n    'sürət': ['328'],\n    'fast': ['328'],\n    'alcohol': ['333', '334'],\n    'alkoqol': ['333', '334'],\n    'drunk': ['333', '334'],\n    'içki': ['333', '334'],\n    'sərxoş': ['333', '334'],\n    'license': ['332', '334'],\n    'lisenziya': ['332', '334'],\n    'vəsiqə': ['332'],\n    'seatbelt': ['329'],\n    'kəmər': ['329'],\n    'helmet': ['329'],\n    'dəbilqə': ['329'],\n    'parking': ['346', '346-1'],\n    'parklanma': ['346-1'],\n    'dayanma': ['346'],\n    'stop': ['346'],\n    'pedestrian': ['330', '338'],\n    'piyada': ['330', '338'],\n    'red light': ['327'],\n    'qırmızı işıq': ['327'],\n    'svetofor': ['327'],\n    'traffic light': ['327'],\n    'insurance': ['469'],\n    'sığorta': ['469'],\n    'phone': ['327'],\n    'telefon': ['327'],\n    'emergency': ['331'],\n    'təcili': ['331'],\n    'ambulance': ['331'],\n    'test': ['343'],\n    'müayinə': ['343'],\n    'exhaust': ['342'],\n    'səs': ['342'],\n    'loud': ['342'],\n    'racing': ['511'],\n    'yarış': ['511'],\n    'wheelie': ['511'],\n    'hooligan': ['511'],\n    'xuliqan': ['511']\n  };\n  \n  // Find matching article IDs\n  const matchedIds = new Set();\n  for (const [keyword, ids] of Object.entries(keywords)) {\n    if (queryLower.includes(keyword)) {\n      ids.forEach(id => matchedIds.add(id));\n    }\n  }\n  \n  // If no keyword match, search in article content\n  if (matchedIds.size === 0) {\n    for (const article of knowledgeBase.articles) {\n      const articleText = JSON.stringify(article).toLowerCase();\n      if (articleText.includes(queryLower) || \n          queryLower.split(' ').some(word => word.length > 3 && articleText.includes(word))) {\n        matchedIds.add(article.id);\n      }\n    }\n  }\n  \n  // Get matched articles\n  for (const article of knowledgeBase.articles) {\n    if (matchedIds.has(article.id)) {\n      results.push(article);\n    }\n  }\n  \n  // If still no results, return top 3 most common violations\n  if (results.length === 0) {\n    results.push(\n      knowledgeBase.articles.find(a => a.id === '328'), // Speeding\n      knowledgeBase.articles.find(a => a.id === '346'), // Stopping\n      knowledgeBase.articles.find(a => a.id === '329')  // Safety\n    );\n  }\n  \n  return results.slice(0, 3); // Max 3 articles for context\n}\n\nconst relevantArticles = searchKnowledgeBase(userMessage);\n\n// Format context for LLM\nlet context = \"RELEVANT TRAFFIC FINE INFORMATION:\\n\\n\";\nfor (const article of relevantArticles) {\n  context += `## ${article.title}\\n`;\n  for (const item of article.content) {\n    context += `- ${item.violation}: ${item.fine} AZN`;\n    if (item.points && item.points !== 0) {\n      context += `, ${item.points} points`;\n    }\n    context += \"\\n\";\n  }\n  context += \"\\n\";\n}\n\nreturn {\n  json: {\n    userMessage,\n    chatId,\n    context,\n    relevantArticles\n  }\n};"
+      },
+      "id": "search-knowledge",
+      "name": "Search Knowledge Base",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant that answers questions about traffic fines and violations in Azerbaijan. You respond in the same language as the user's question (English or Azerbaijani).\n\nRules:\n1. Only answer questions about traffic fines based on the provided context\n2. Always mention the fine amount in AZN and penalty points if applicable\n3. If the exact violation isn't in the context, say you don't have that specific information\n4. Be concise but complete\n5. If asked in Azerbaijani, respond in Azerbaijani\n6. If asked in English, respond in English"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.context }}\n\n---\nUSER QUESTION: {{ $json.userMessage }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 500
+        }
+      },
+      "id": "ai-response",
+      "name": "Generate AI Response",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [690, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-creds",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{ $('Search Knowledge Base').item.json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-send",
+      "name": "Send Telegram Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [910, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-creds",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Search Knowledge Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Knowledge Base": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

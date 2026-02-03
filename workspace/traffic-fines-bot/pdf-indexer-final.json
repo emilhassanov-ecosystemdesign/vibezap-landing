@@ -1,0 +1,103 @@
+{
+  "name": "Traffic Fines - PDF Indexer",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-500, 0],
+      "id": "manual-trigger",
+      "name": "Run Manually"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.fileId }}",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [-300, 0],
+      "id": "download-pdf",
+      "name": "Download PDF",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// The full text content from the Azerbaijan Traffic Fines PDF\n// Source: Cərimə və Ballar Cədvəli (avtostop.az/cerimeler/)\n\nconst pdfContent = `\nAZƏRBAYCAN RESPUBLİKASI YOL HƏRƏKƏTİ QAYDALARI - CƏRİMƏ VƏ BALLAR CƏDVƏLİ\n\nMaddə 327 - Yol hərəkəti qaydalarının pozulması\n\n327.1 - Yol nişanlarının, nişanlama xətlərinin tələblərinə riayət edilməməsi: 40 AZN cərimə\n327.1-1 - Avtobus hərəkəti üçün nəzərdə tutulmuş zolaqla hərəkət: 100 AZN cərimə, 2 cərimə balı\n327.1-2 - Velosiped yolu ilə hərəkət: 100 AZN cərimə, 2 cərimə balı\n327.2 - Svetoforun qırmızı işığında və ya nizamlayıcının qadağan siqnalında hərəkət: 100 AZN cərimə, 3 cərimə balı\n327.3 - Dəmiryol keçidindən keçmə qaydalarının pozulması: 100 AZN cərimə, 4 cərimə balı\n327.4 - Birtərəfli yolda əks istiqamətə hərəkət: 150 AZN cərimə, 4 cərimə balı\n327.5 - Avtomagistralda hərəkət qaydalarının pozulması: 150 AZN cərimə, 4 cərimə balı\n327.6 - Yol-nəqliyyat hadisəsi yerindən yayınma: 150 AZN cərimə, 4 cərimə balı\n327.7 - 20 və daha artıq cərimə balı toplanması: sürücülük vəsiqəsinin 6 ay müddətinə dayandırılması\n327.8 - Yüngül bədən xəsarəti yetirilməsi: 200 AZN cərimə və ya vəsiqənin 1 ilədək müddətə alınması, 5 cərimə balı\n\nMaddə 328 - Nəqliyyat vasitələrinin müəyyən edilmiş sürət həddinin aşılması\n\n328.1 - Sürətin 10-20 km/saat artıq olması: 10 AZN cərimə\n328.2 - Sürətin 21-40 km/saat artıq olması: 50 AZN cərimə, 2 cərimə balı\n328.3 - Sürətin 41-60 km/saat artıq olması: 200 AZN cərimə, 3 cərimə balı\n328.4 - Sürətin 61 km/saat və daha artıq olması: 300 AZN cərimə, 4 cərimə balı\n\nMaddə 329 - Təhlükəsizlik tədbirlərinə riayət edilməməsi\n\n329.1 - Təhlükəsizlik kəmərindən istifadə etməmək: 40 AZN cərimə\n329.2 - Motosikletdə dəbilqəsiz hərəkət: 40 AZN cərimə\n329.3 - İşıq və səs siqnallarının istifadə qaydalarının pozulması: 30 AZN cərimə\n\nMaddə 330 - Piyadalara yol verilməməsi\n\n330.0 - Piyada keçidində piyadaya yol verməmək: 50 AZN cərimə\n330.0.1 - Nizamlanmayan piyada keçidində yol verməmək: 50 AZN cərimə\n330.0.2 - Dönüş zamanı piyadaya yol verməmək: 50 AZN cərimə\n\nMaddə 331 - Təcili yardım nəqliyyatına yol verilməməsi\n\n331 - Xüsusi səs və işıq siqnalları ilə hərəkət edən nəqliyyata yol verməmək: 100 AZN cərimə, 3 cərimə balı\n\nMaddə 332 - Sürücülük vəsiqəsi olmadan idarəetmə\n\n332.1 - Etibarnamə olmadan nəqliyyat idarə etmək: 40 AZN cərimə\n332.2 - Sürücülük vəsiqəsi olmadan idarəetmə: 200 AZN cərimə\n332.3 - Təkrar vəsiqəsiz idarəetmə: 400 AZN cərimə\n332.4 - Vəsiqəsiz idarəetmə ilə xəsarət yetirilməsi: 500 AZN cərimə və ya 1 ay həbs\n332.5 - İctimai nəqliyyatı vəsiqəsiz idarəetmə: 15 gün - 1 ay həbs\n\nMaddə 333 - Sərxoş halda nəqliyyat vasitəsinin idarə edilməsi (Alkoqol)\n\n333.1 - İlk dəfə sərxoş halda idarəetmə: 400 AZN cərimə və ya vəsiqənin 6 ay - 1 ilədək müddətə alınması, 5 cərimə balı\n333.2 - Təkrar sərxoş halda idarəetmə: 500 AZN cərimə + vəsiqənin 2 ilədək alınması və ya 15 gün həbs\n333.3 - Sərxoş halda idarəetmə ilə xəsarət yetirilməsi: 700 AZN + vəsiqənin 2 ilədək alınması və ya həbs\n333.4 - İctimai nəqliyyatı sərxoş halda idarəetmə: vəsiqənin 2 ilədək alınması + 15 gün - 1 ay həbs\n333.5 - İctimai nəqliyyatda sərxoş + xəsarət: vəsiqənin 2 ilədək alınması + 2-3 ay həbs\n\nMaddə 333-1 - Narkotik vasitələrin təsiri altında idarəetmə\n\n333-1.1 - Narkotik təsiri altında idarəetmə: 600 AZN cərimə və ya vəsiqənin 6 ay - 1 ilədək alınması\n333-1.2 - Təkrar narkotik halda idarəetmə: 800 AZN + vəsiqənin 2 ilədək alınması\n333-1.3 - Narkotik halda + xəsarət: 900 AZN + vəsiqənin 2 ilədək alınması və ya həbs\n\nMaddə 334 - Sürücülük vəsiqəsi olmadan sərxoş halda idarəetmə\n\n334.1 - Vəsiqəsiz + sərxoş idarəetmə: 500 AZN cərimə və ya 15 gün həbs\n334.2 - Təkrar: 15 gün - 1 ay həbs\n334.3 - Xəsarətlə: 800 AZN cərimə və ya 1-2 ay həbs\n\nMaddə 334-1 - Vəsiqəsiz + narkotik halda idarəetmə\n\n334-1.1 - Vəsiqəsiz + narkotik: 800 AZN cərimə və ya 15 gün həbs\n334-1.2 - Təkrar: 1-2 ay həbs\n334-1.3 - Xəsarətlə: 1000 AZN cərimə və ya 1-3 ay həbs\n\nMaddə 335 - Vəsiqəsi olmayan şəxsə nəqliyyat vermə\n\n335.1 - Vəsiqəsiz şəxsə nəqliyyat vermək: Fiziki şəxs 60 AZN, Vəzifəli şəxs 200 AZN, Hüquqi şəxs 2000 AZN\n335.2 - Təkrar: Fiziki 100, Vəzifəli 300, Hüquqi 3000 AZN\n335.3 - Xəsarətlə: Fiziki 180, Vəzifəli 500, Hüquqi 5000 AZN\n\nMaddə 336 - Sərxoş şəxsə nəqliyyat vermə\n\n336.1 - Sərxoş şəxsə nəqliyyat vermək: Fiziki 100, Vəzifəli 300, Hüquqi 3000 AZN\n336.2 - Təkrar: Fiziki 200, Vəzifəli 400, Hüquqi 4000 AZN\n336.3 - Xəsarətlə: Fiziki 300, Vəzifəli 600, Hüquqi 6000 AZN\n\nMaddə 337 - Vəsiqəsiz və sərxoş şəxsə nəqliyyat vermə\n\n337.1 - Vəsiqəsiz sərxoş şəxsə nəqliyyat vermək: Fiziki 200, Vəzifəli 400, Hüquqi 4000 AZN\n337.2 - Təkrar: Fiziki 300, Vəzifəli 600, Hüquqi 6000 AZN\n337.3 - Xəsarətlə: Fiziki 400, Vəzifəli 800, Hüquqi 8000 AZN\n\nMaddə 338 - Piyadaların, velosipedçilərin pozuntuları\n\n338.1 - Piyadanın yol hərəkəti qaydalarını pozması: 20 AZN cərimə\n338.2 - Piyadanın səhv yerdən keçməsi: 20 AZN cərimə\n338.2-1 - 80 km/saat və artıq sürət həddi olan yolda səhv keçmə: 40 AZN cərimə\n338.3 - Sərnişinin pozuntusu: 30 AZN cərimə\n338.4 - Velosipedçinin pozuntusu: 40 AZN cərimə\n338.4-1 - Elektrik skuterçinin pozuntusu: 40 AZN cərimə\n338.5 - At arabasının pozuntusu: 40 AZN cərimə\n338.6 - Velosipedlə sərxoş halda hərəkət: 70 AZN cərimə\n338.7 - Piyadanın xəsarət törətməsi: 80-100 AZN cərimə\n\nMaddə 339 - Qeydiyyat pozuntuları\n\n339.1 - Qeydiyyata alınmamış nəqliyyat: Fiziki 50, Vəzifəli 100, Hüquqi 300 AZN\n339.1-1 - Texniki baxışdan keçmədən idarəetmə: 50 AZN cərimə\n\nMaddə 342 - Nəqliyyat vasitəsinin istismar qaydalarının pozulması\n\n342.1 - İstismar qaydalarının pozulması: 40 AZN cərimə\n342.2 - Texniki vəziyyət pozuntusu: 150 AZN cərimə\n342.3 - Səs artırıcı modifikasiya (egzoz): 500 AZN cərimə\n342.4 - Təkrar səs artırıcı pozuntusu: 1000 AZN cərimə\n342.5 - Nasaz avadanlıqla hərəkət: 50 AZN cərimə\n342.6 - Telefon istifadəsi (əldə tutaraq): 50 AZN cərimə\n342.7 - Saxta və ya olmayan nömrə nişanı: 100 AZN cərimə, 4 cərimə balı\n342.8 - Nasaz nəqliyyatla xəsarət: 200 AZN və ya vəsiqənin 1-2 ilədək alınması\n342.9 - Qanunsuz xüsusi siqnal və ya antiradar: 500-800 AZN cərimə + müsadirə\n\nMaddə 343 - Tibbi müayinədən imtina\n\n343.1 - Sərxoşluq müayinəsindən imtina: 400 AZN cərimə və ya vəsiqənin 6 ay - 1 ilədək alınması\n343.1-1 - Təkrar imtina: 500 AZN + vəsiqənin 2 ilədək alınması və ya 15 gün həbs\n\nMaddə 344 - Tibbi müayinəsiz idarəetmə\n\n344 - Tibbi müayinədən keçmədən idarəetmə: 30 AZN cərimə\n\nMaddə 346 - Dayanma və durma qaydalarının pozulması\n\n346.1 - Ümumi dayanma pozuntusu: 20 AZN cərimə\n346.2 - Avtobus dayanacağında dayanma: 40 AZN cərimə, 2 cərimə balı\n346.3 - İctimai nəqliyyatın dayanma pozuntusu: 100 AZN cərimə, 4 cərimə balı\n346.4 - İkinci cərgədə dayanma: 80 AZN cərimə, 2 cərimə balı\n346.5 - Yolayrıcı yaxınlığında dayanma: 40 AZN cərimə, 2 cərimə balı\n346.6 - Taksi dayanacağında dayanma: 40 AZN cərimə, 2 cərimə balı\n346.7 - Velosiped yolunda dayanma: 100 AZN cərimə, 2 cərimə balı\n346.8 - Avtobus zolağında dayanma: 100 AZN cərimə, 2 cərimə balı\n346.9 - Səkidə dayanma: 60 AZN cərimə, 2 cərimə balı\n\nMaddə 346-1 - Parklanma qaydalarının pozulması\n\n346-1.1 - Ödənişli parklanma pozuntusu: 20 AZN cərimə\n346-1.2 - Səhv parklanma: 20 AZN cərimə\n346-1.3 - Əlillər üçün yerlərdə parklanma: 60 AZN cərimə\n346-1.4 - Parklanma maneəsi: 20 AZN cərimə\n346-1.5 - 24 saatdan artıq parklanma: 20 AZN cərimə\n346-1.6 - Elektrik doldurma yerində parklanma: 20 AZN cərimə\n346-1.7 - Velosiped parklanma pozuntusu: 10 AZN cərimə\n346-1.8 - Xidməti parklanma yerində: 40 AZN cərimə\n\nMaddə 356 - Tibbi təminat\n\n356.1 - Dərman qutusu olmadan hərəkət: 10 AZN cərimə\n356.2 - Təcili yardım tələb edəni daşımaqdan imtina: 40 AZN cərimə\n\nMaddə 469 - İcbari sığorta\n\n469.3 - İcbari sığortası olmadan idarəetmə: Fiziki 50, Vəzifəli 100, Hüquqi 300 AZN cərimə\n\nMaddə 511 - Avtoxuliqanlıq\n\n511.1 - Küçə yarışları, drift, burnout: 500-750 AZN cərimə + vəsiqənin 1 ilədək alınması və ya həbs\n511.2 - Təkrar avtoxuliqanlıq: 750-1000 AZN + vəsiqənin 2 ilədək alınması və ya həbs\n511.3 - 60 km/saat artıq sürətlə yarış: 2000-4000 AZN + vəsiqənin 2 ilədək alınması və ya həbs\n\nMaddə 96-98 - Nəqliyyat vasitələrinin saxlanılması\n\n96 - Saxlanıla bilən hallar: sərxoş halda idarəetmə, vəsiqəsiz idarəetmə, nasaz texniki vəziyyət, qeydiyyatsız nəqliyyat\n97 - Saxlama proseduru: 72 saat ərzində nəqliyyat sahibinə xəbər verilməlidir\n98 - Nəqliyyatın qaytarılması: bütün cərimələr ödənildikdən sonra qaytarılır\n\n--- ENGLISH TRANSLATION ---\n\nArticle 327 - Traffic Rules Violations\n327.1 - Not following road signs/markings: 40 AZN fine\n327.1-1 - Driving in bus lane: 100 AZN, 2 penalty points\n327.1-2 - Driving in bicycle lane: 100 AZN, 2 penalty points\n327.2 - Running red light: 100 AZN, 3 penalty points\n327.3 - Railway crossing violation: 100 AZN, 4 penalty points\n327.4 - Wrong-way on one-way street: 150 AZN, 4 penalty points\n327.5 - Highway violations: 150 AZN, 4 penalty points\n327.6 - Leaving accident scene: 150 AZN, 4 penalty points\n327.7 - Accumulating 20+ penalty points: license suspended 6 months\n327.8 - Causing minor injury: 200 AZN or license up to 1 year, 5 penalty points\n\nArticle 328 - Speeding\n328.1 - 10-20 km/h over limit: 10 AZN\n328.2 - 21-40 km/h over: 50 AZN, 2 points\n328.3 - 41-60 km/h over: 200 AZN, 3 points\n328.4 - 61+ km/h over: 300 AZN, 4 points\n\nArticle 329 - Safety Equipment\n329.1 - No seatbelt: 40 AZN\n329.2 - No motorcycle helmet: 40 AZN\n329.3 - Light/signal violations: 30 AZN\n\nArticle 330 - Pedestrian Right of Way\n330.0 - Not yielding to pedestrian at crosswalk: 50 AZN\n\nArticle 331 - Emergency Vehicles\n331 - Not yielding to emergency vehicles: 100 AZN, 3 points\n\nArticle 332 - Driving Without License\n332.1 - No power of attorney: 40 AZN\n332.2 - No license: 200 AZN\n332.3 - Repeat offense: 400 AZN\n332.4 - No license + injury: 500 AZN or 1 month detention\n332.5 - Public transport without license: 15 days - 1 month detention\n\nArticle 333 - DUI (Alcohol)\n333.1 - First DUI: 400 AZN or license 6 months - 1 year, 5 points\n333.2 - Repeat DUI: 500 AZN + license 2 years or 15 days detention\n333.3 - DUI + injury: 700 AZN + license 2 years or detention\n333.4 - Public transport DUI: license 2 years + 15 days - 1 month detention\n333.5 - Public transport DUI + injury: license 2 years + 2-3 months detention\n\nArticle 333-1 - DUI (Drugs)\n333-1.1 - First drug DUI: 600 AZN or license 6 months - 1 year\n333-1.2 - Repeat: 800 AZN + license 2 years\n333-1.3 - Drug DUI + injury: 900 AZN + license 2 years or detention\n\nArticle 342 - Vehicle Operation Violations\n342.3 - Loud exhaust modification: 500 AZN\n342.4 - Repeat loud exhaust: 1000 AZN\n342.6 - Phone use while driving: 50 AZN\n342.7 - Fake/missing license plates: 100 AZN, 4 points\n\nArticle 346 - Stopping Violations\n346.2 - Stopping at bus stop: 40 AZN, 2 points\n346.4 - Double parking: 80 AZN, 2 points\n346.9 - Parking on sidewalk: 60 AZN, 2 points\n\nArticle 346-1 - Parking Violations\n346-1.3 - Disabled spot: 60 AZN\n346-1.1 - Paid parking violation: 20 AZN\n\nArticle 469 - Mandatory Insurance\n469.3 - Driving without insurance: Individual 50, Official 100, Legal entity 300 AZN\n\nArticle 511 - Road Hooliganism\n511.1 - Street racing/drifting: 500-750 AZN + license 1 year or detention\n511.2 - Repeat: 750-1000 AZN + license 2 years or detention\n511.3 - Racing 60+ km/h over: 2000-4000 AZN + license 2 years or detention\n`;\n\nreturn [{ json: { text: pdfContent, pageContent: pdfContent, metadata: { source: 'traffic-fines.pdf', title: 'Cərimə və Ballar Cədvəli' } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "id": "pdf-content",
+      "name": "PDF Content (Embedded)"
+    },
+    {
+      "parameters": {
+        "chunkSize": 800,
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [100, 200],
+      "id": "text-splitter",
+      "name": "Text Splitter"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [200, 200],
+      "id": "embeddings",
+      "name": "OpenAI Embeddings",
+      "credentials": {
+        "openAiApi": {
+          "id": "23mseFmTKiVo6pxW",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "documents",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "id": "supabase-insert",
+      "name": "Store in Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "jjH3tGL5e6h88JLX",
+          "name": "Supabase Traffic Fines"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run Manually": {
+      "main": [[{"node": "PDF Content (Embedded)", "type": "main", "index": 0}]]
+    },
+    "PDF Content (Embedded)": {
+      "main": [[{"node": "Store in Supabase", "type": "main", "index": 0}]]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [[{"node": "Store in Supabase", "type": "ai_textSplitter", "index": 0}]]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [[{"node": "Store in Supabase", "type": "ai_embedding", "index": 0}]]
+    }
+  }
+}

@@ -298,71 +298,19 @@ export default function RoastMyWebsite() {
     setShowDetails(false);
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/roast", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [
-            {
-              role: "user",
-              content: `You are a brutally honest website critic with a sharp sense of humor. Visit and analyze this website: ${cleanUrl}
-
-Analyze the website and return ONLY a JSON object (no markdown, no backticks, no preamble) with this exact structure:
-{
-  "overall_score": <number 1-10>,
-  "roast_headline": "<a short, savage, funny one-liner roast of the site>",
-  "roast_summary": "<2-3 sentences of brutally honest but constructive feedback, written in a funny roasting style>",
-  "categories": {
-    "Design": { "score": <1-10>, "comment": "<one funny roast line about the design>" },
-    "Copy": { "score": <1-10>, "comment": "<one funny roast line about the writing/copy>" },
-    "UX": { "score": <1-10>, "comment": "<one funny roast line about user experience>" },
-    "Performance": { "score": <1-10>, "comment": "<one funny roast line about speed/performance>" },
-    "Trust": { "score": <1-10>, "comment": "<one funny roast line about credibility/trust signals>" }
-  },
-  "top_fixes": ["<fix 1>", "<fix 2>", "<fix 3>"],
-  "severity": "<one of: brutal, harsh, mild, decent, fire>"
-}
-
-Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quotable and funny. Respond with ONLY the JSON.`,
-            },
-          ],
-        }),
+        body: JSON.stringify({ url: cleanUrl }),
       });
 
       const data = await response.json();
 
-      if (data.error) {
-        throw new Error(data.error.message || "API returned an error");
+      if (!response.ok) {
+        throw new Error(data.error || "Something went wrong");
       }
 
-      if (!data.content || data.content.length === 0) {
-        throw new Error("Empty response from API");
-      }
-
-      // Extract all text blocks from the response (web search creates multiple blocks)
-      const textContent = data.content
-        .filter((item) => item.type === "text")
-        .map((item) => item.text)
-        .join("\n");
-
-      // Find JSON object in the response
-      const jsonMatch = textContent.match(/\{[\s\S]*"overall_score"[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No valid roast data found in response");
-      }
-
-      const cleaned = jsonMatch[0].replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-
-      // Validate essential fields exist
-      if (!parsed.overall_score || !parsed.categories) {
-        throw new Error("Incomplete roast data");
-      }
-
-      setResult(parsed);
+      setResult(data);
 
       setTimeout(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth" });

@@ -656,13 +656,13 @@ export default function VibZapLanding() {
                   fontFamily: "'Syne', sans-serif", fontSize: "clamp(28px, 5vw, 44px)",
                   fontWeight: 800, letterSpacing: "-1px", marginTop: "12px",
                 }}>
-                  How VibZap works
+                  How VibeZap works
                 </h2>
               </div>
             </Reveal>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "40px" }}>
-              <StepCard number="1" title="Pick a tool" description="Browse our collection. Each tool solves exactly one problem \u2014 no bloat, no confusion." delay={0} />
+              <StepCard number="1" title="Pick a tool" description={"Browse our collection. Each tool solves exactly one problem \u2014 no bloat, no confusion."} delay={0} />
               <StepCard number="2" title="Give it input" description="Paste a URL, upload a file, answer a few questions. That's it. No account needed." delay={150} />
               <StepCard number="3" title="Get your result" description="Instant output you can use, share, or download. Pay only if you want the premium version." delay={300} />
             </div>

@@ -825,9 +825,8 @@ export default function VibZapLanding() {
             </p>
 
             <div style={{ display: "flex", gap: "24px" }}>
-              <button className="nav-link" style={{ fontSize: "12px" }}>Twitter</button>
-              <button className="nav-link" style={{ fontSize: "12px" }}>GitHub</button>
-              <button className="nav-link" style={{ fontSize: "12px" }}>Contact</button>
+              <a className="nav-link" style={{ fontSize: "12px" }} href="https://x.com/vibezapdev" target="_blank" rel="noopener noreferrer">Twitter / X</a>
+              <a className="nav-link" style={{ fontSize: "12px" }} href="mailto:hello@vibezap.dev">Contact</a>
             </div>
           </div>
         </footer>

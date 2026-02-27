@@ -586,7 +586,7 @@ export default function VibZapLanding() {
 
           {/* Scroll indicator */}
           <div style={{
-            position: "absolute", bottom: "32px", left: "50%", transform: "translateX(-50%)",
+            position: "absolute", bottom: "-10px", left: "50%", transform: "translateX(-50%)",
             animation: "float 3s ease-in-out infinite",
           }}>
             <div style={{

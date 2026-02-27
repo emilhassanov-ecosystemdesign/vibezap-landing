@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 /* --- BRAND TOKENS --- */
 const brand = {
@@ -90,11 +91,13 @@ function Reveal({ children, delay = 0, style = {} }) {
 }
 
 /* --- TOOL CARD --- */
-function ToolCard({ icon, title, description, price, tag, tagColor, delay }) {
+function ToolCard({ icon, title, description, price, tag, tagColor, delay, link }) {
   const [hovered, setHovered] = useState(false);
+  const navigate = useNavigate();
   return (
     <Reveal delay={delay}>
       <div
+        onClick={() => link && navigate(link)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -281,6 +284,7 @@ export default function VibZapLanding() {
       price: "Free / $5 full report",
       tag: "Live",
       tagColor: "#4ade80",
+      link: "/roast",
     },
     {
       icon: "\uD83D\uDEE1\uFE0F",

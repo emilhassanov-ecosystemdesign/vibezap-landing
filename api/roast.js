@@ -1,6 +1,44 @@
+// In-memory rate limiting (persists across warm invocations)
+const rateLimit = new Map();
+const MAX_REQUESTS = 3;
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+
+  // Clean up expired entries
+  for (const [key, entry] of rateLimit) {
+    if (now > entry.resetTime) rateLimit.delete(key);
+  }
+
+  const entry = rateLimit.get(ip);
+  if (!entry || now > entry.resetTime) {
+    rateLimit.set(ip, { count: 1, resetTime: now + WINDOW_MS });
+    return null;
+  }
+
+  if (entry.count >= MAX_REQUESTS) {
+    const retryAfter = Math.ceil((entry.resetTime - now) / 60000);
+    return retryAfter;
+  }
+
+  entry.count++;
+  return null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Rate limit by IP
+  const ip = (req.headers["x-forwarded-for"] || "unknown").split(",")[0].trim();
+  const retryAfter = checkRateLimit(ip);
+  if (retryAfter !== null) {
+    return res.status(429).json({
+      error: `Whoa, slow down! You've used all ${MAX_REQUESTS} roasts for this hour. Come back in ~${retryAfter} minutes for more burns.`,
+      retryAfter,
+    });
   }
 
   const { url } = req.body;

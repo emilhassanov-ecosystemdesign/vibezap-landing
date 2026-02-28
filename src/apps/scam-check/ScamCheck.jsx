@@ -318,6 +318,11 @@ export default function ScamCheck() {
   // Load LemonSqueezy overlay script + register event handler
   useEffect(() => {
     function setupLS() {
+      // createLemonSqueezy() is required in SPAs to reinitialize event listeners
+      if (typeof window.createLemonSqueezy === "function") {
+        window.createLemonSqueezy();
+        console.log("[LS] createLemonSqueezy() called");
+      }
       if (window.LemonSqueezy) {
         window.LemonSqueezy.Setup({
           eventHandler: (event) => lsHandlerRef.current?.(event),
@@ -329,7 +334,7 @@ export default function ScamCheck() {
     if (!document.getElementById("lemonsqueezy-js")) {
       const script = document.createElement("script");
       script.id = "lemonsqueezy-js";
-      script.src = "https://assets.lemonsqueezy.com/lemon.js";
+      script.src = "https://app.lemonsqueezy.com/js/lemon.js";
       script.defer = true;
       script.onload = () => setupLS();
       document.head.appendChild(script);

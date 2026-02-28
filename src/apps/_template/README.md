@@ -1,6 +1,6 @@
 # _template
 
-This is the starter template for new VibZap micro-apps.
+This is the starter template for new VibeZap micro-apps.
 
 ## Usage
 

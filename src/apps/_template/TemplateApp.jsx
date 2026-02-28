@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 /**
- * VibZap Micro-App Template
+ * VibeZap Micro-App Template
  *
  * Copy this file to src/apps/<your-app-name>/<YourAppName>.jsx
  * Then customize everything below.
@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom'
  * 1. Rename component and export
  * 2. Add route in src/App.jsx
  * 3. Create api/<your-app>.js if needed
- * 4. Add tool card in VibZapLanding.jsx
+ * 4. Add tool card in VibeZapLanding.jsx
  * 5. Create README.md in this folder
  */
 
@@ -72,7 +72,7 @@ export default function TemplateApp() {
             display: 'flex', alignItems: 'center', gap: '8px'
           }}
         >
-          ← Back to VibZap
+          ← Back to VibeZap
         </button>
       </div>
 

@@ -3,7 +3,7 @@
 Place shared components, utilities, and constants here when **3+ micro-apps** need the same code.
 
 ## Planned extractions
-- `components/BackNav.jsx` — "← Back to VibZap" navigation (extract when 3rd app ships)
+- `components/BackNav.jsx` — "← Back to VibeZap" navigation (extract when 3rd app ships)
 - `constants/theme.js` — Brand colors, fonts (extract when consistency becomes an issue)
 - `utils/api.js` — Common fetch wrapper with error handling
 

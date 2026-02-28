@@ -1,4 +1,4 @@
-# VibZap.dev — AI Micro-Tools Portal
+# VibeZap.dev — AI Micro-Tools Portal
 
 > **One tool. One zap. Problem solved.**
 
@@ -14,7 +14,7 @@ npm run preview    # Preview production build
 
 ## Project Overview
 
-VibZap is a **React SPA** that serves as a portal/studio for AI-powered micro-tools. Each tool is a self-contained "micro-app" that lives at its own route under vibezap.dev.
+VibeZap is a **React SPA** that serves as a portal/studio for AI-powered micro-tools. Each tool is a self-contained "micro-app" that lives at its own route under vibezap.dev.
 
 **Live URL:** https://vibezap.dev
 **Deployment:** Vercel (auto-deploys from Git)
@@ -45,7 +45,7 @@ vibezap-landing/
 ├── src/
 │   ├── main.jsx                  # React entry point
 │   ├── App.jsx                   # Router — maps routes to micro-apps
-│   ├── VibZapLanding.jsx         # Landing page (/)
+│   ├── VibeZapLanding.jsx         # Landing page (/)
 │   └── apps/                     # Micro-app modules
 │       ├── roast-my-website/
 │       │   ├── RoastMyWebsite.jsx    # Roast tool UI (/roast)
@@ -94,7 +94,7 @@ Quick summary:
 1. Create `src/apps/<app-name>/` folder with `<AppName>.jsx` and `README.md`
 2. Add route in `App.jsx`
 3. Add API endpoint in `api/<name>.js` (if needed)
-4. Add tool card in `VibZapLanding.jsx` tools array
+4. Add tool card in `VibeZapLanding.jsx` tools array
 5. Update the Micro-Apps Registry table above
 
 ## Brand & Design Tokens

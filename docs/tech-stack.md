@@ -1,4 +1,4 @@
-# Tech Stack — VibZap.dev
+# Tech Stack — VibeZap.dev
 
 ## Frontend
 

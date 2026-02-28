@@ -1,6 +1,6 @@
 # How to Add a New Micro-App
 
-Step-by-step guide for adding a new tool to VibZap.dev.
+Step-by-step guide for adding a new tool to VibeZap.dev.
 
 ## 1. Create the App Folder
 
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
 
 ## 5. Add Tool Card to Landing Page
 
-In `VibZapLanding.jsx`, find the `tools` array and add your tool:
+In `VibeZapLanding.jsx`, find the `tools` array and add your tool:
 
 ```javascript
 {
@@ -164,7 +164,7 @@ Vercel auto-deploys. Check the deployment at https://vercel.com/dashboard.
 - [ ] Route added in `App.jsx`
 - [ ] API endpoint created (if needed)
 - [ ] Env vars added to Vercel (if new ones needed)
-- [ ] Tool card added/updated in `VibZapLanding.jsx`
+- [ ] Tool card added/updated in `VibeZapLanding.jsx`
 - [ ] CLAUDE.md micro-apps registry updated
 - [ ] `npm run build` passes
 - [ ] Tested locally with `npm run preview` or `vercel dev`

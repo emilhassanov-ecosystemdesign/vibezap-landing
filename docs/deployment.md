@@ -1,8 +1,8 @@
-# Deployment Guide — VibZap.dev
+# Deployment Guide — VibeZap.dev
 
 ## Hosting: Vercel
 
-VibZap is deployed on **Vercel** with automatic Git integration.
+VibeZap is deployed on **Vercel** with automatic Git integration.
 
 ### How It Works
 1. Push to the connected Git branch (typically `main`)
@@ -42,7 +42,7 @@ To add/update: Vercel Dashboard → Project → Settings → Environment Variabl
 1. [ ] New component created in `src/apps/<name>/`
 2. [ ] Route added in `src/App.jsx`
 3. [ ] API endpoint added in `api/<name>.js` (if needed)
-4. [ ] Tool card added in `VibZapLanding.jsx`
+4. [ ] Tool card added in `VibeZapLanding.jsx`
 5. [ ] Any new env vars added to Vercel dashboard
 6. [ ] Local build passes: `npm run build`
 7. [ ] Local preview works: `npm run preview`

@@ -260,7 +260,7 @@ function StepCard({ number, title, description, delay }) {
 }
 
 /* --- MAIN PAGE --- */
-export default function VibZapLanding() {
+export default function VibeZapLanding() {
   const [scrollY, setScrollY] = useState(0);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);

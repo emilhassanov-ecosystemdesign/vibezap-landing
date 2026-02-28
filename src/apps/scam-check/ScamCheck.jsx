@@ -251,10 +251,10 @@ export default function ScamCheck() {
   // Route-specific meta tags
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Am I Being Scammed? \u2014 AI Scam Detector | VibZap";
+    document.title = "Am I Being Scammed? \u2014 AI Scam Detector | VibeZap";
 
     const desc = "Paste any suspicious email, text, or DM and get an instant AI-powered scam analysis with red flags and recommended actions.";
-    const title = "Am I Being Scammed? \u2014 AI Scam Detector | VibZap";
+    const title = "Am I Being Scammed? \u2014 AI Scam Detector | VibeZap";
     const metaUpdates = [
       ["meta[name='description']", desc],
       ["meta[property='og:title']", title],
@@ -403,7 +403,7 @@ export default function ScamCheck() {
               onMouseEnter={(e) => e.target.style.color = "#00E5FF"}
               onMouseLeave={(e) => e.target.style.color = "rgba(255,255,255,0.35)"}
             >
-              &larr; Back to VibZap
+              &larr; Back to VibeZap
             </button>
           </div>
 

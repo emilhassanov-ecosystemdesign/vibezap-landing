@@ -1,8 +1,8 @@
-# Architecture — VibZap.dev
+# Architecture — VibeZap.dev
 
 ## Overview
 
-VibZap follows a **monolithic SPA with modular micro-apps** pattern. All micro-apps share a single React application, router, and deployment — but each app is self-contained in its own folder.
+VibeZap follows a **monolithic SPA with modular micro-apps** pattern. All micro-apps share a single React application, router, and deployment — but each app is self-contained in its own folder.
 
 ```
 ┌─────────────────────────────────────────┐
@@ -82,7 +82,7 @@ Currently in-memory (`Map` per function instance). Resets on cold starts. For pe
 
 | Pattern | Example | Maps to |
 |---------|---------|---------|
-| `/` | vibezap.dev | `VibZapLanding.jsx` (landing page) |
+| `/` | vibezap.dev | `VibeZapLanding.jsx` (landing page) |
 | `/<tool-slug>` | vibezap.dev/roast | `src/apps/<tool>/Component.jsx` |
 | `/api/<tool-slug>` | vibezap.dev/api/roast | `api/<tool>.js` (serverless) |
 

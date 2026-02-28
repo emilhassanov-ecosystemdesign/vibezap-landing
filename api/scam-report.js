@@ -1,4 +1,6 @@
 import generateScamPdf from "./lib/generate-scam-pdf.js";
+import { verifyOrder } from "./lib/verify-order.js";
+import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
 
 // In-memory rate limiting
 const rateLimit = new Map();
@@ -20,35 +22,6 @@ function checkRateLimit(ip) {
   }
   entry.count++;
   return null;
-}
-
-async function verifyOrder(orderId, apiKey) {
-  const response = await fetch(
-    `https://api.lemonsqueezy.com/v1/orders/${orderId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/vnd.api+json",
-      },
-    }
-  );
-
-  if (!response.ok) return { valid: false, reason: "Order not found" };
-
-  const data = await response.json();
-  const attrs = data?.data?.attributes;
-  if (!attrs) return { valid: false, reason: "Invalid order data" };
-
-  if (attrs.status !== "paid") {
-    return { valid: false, reason: "Order not paid" };
-  }
-
-  // Verify it's a $3 order (total is in cents)
-  if (attrs.total !== 300) {
-    return { valid: false, reason: "Order amount mismatch" };
-  }
-
-  return { valid: true };
 }
 
 const ENHANCED_PROMPT = `You are an expert scam forensic analyst preparing a professional paid report. Analyze the following message in deep detail.
@@ -130,8 +103,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "API key not configured" });
   }
 
-  // Verify payment
-  const orderCheck = await verifyOrder(orderId, lsApiKey);
+  // Verify payment (now also returns customer email)
+  const orderCheck = await verifyOrder(orderId, lsApiKey, 300);
   if (!orderCheck.valid) {
     return res
       .status(403)
@@ -185,20 +158,71 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: "Incomplete analysis data" });
     }
 
-    // Generate PDF
-    const pdfBuffer = await generateScamPdf({
-      ...parsed,
-      originalMessage: message,
-      generatedAt: new Date().toISOString(),
-    });
+    const generatedAt = new Date().toISOString();
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="scam-forensic-report.pdf"'
-    );
-    res.setHeader("Content-Length", pdfBuffer.length);
-    return res.status(200).send(pdfBuffer);
+    // Generate PDF
+    let pdfBase64 = null;
+    const pdfFilename = "scam-forensic-report.pdf";
+    try {
+      const pdfBuffer = await generateScamPdf({
+        ...parsed,
+        originalMessage: message,
+        generatedAt,
+      });
+      pdfBase64 = pdfBuffer.toString("base64");
+
+      // Send email with PDF (non-blocking for errors)
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey && orderCheck.userEmail) {
+        try {
+          const emailResult = await sendReportEmail({
+            to: orderCheck.userEmail,
+            userName: orderCheck.userName,
+            subject: `Your Scam Forensic Report — ${parsed.verdict}`,
+            reportType: "scam",
+            reportData: parsed,
+            pdfBuffer,
+            pdfFilename,
+            resendApiKey,
+          });
+          return res.status(200).json({
+            success: true,
+            analysis: parsed,
+            pdfBase64,
+            pdfFilename,
+            email: {
+              sent: emailResult.sent,
+              address: maskEmail(orderCheck.userEmail),
+              error: emailResult.sent ? null : emailResult.error,
+            },
+            generatedAt,
+            originalMessage:
+              message.substring(0, 200) +
+              (message.length > 200 ? "..." : ""),
+          });
+        } catch (emailErr) {
+          console.error("Email error (non-fatal):", emailErr);
+        }
+      }
+    } catch (pdfErr) {
+      console.error("PDF generation error (non-fatal):", pdfErr);
+    }
+
+    // Return JSON (with or without PDF/email)
+    return res.status(200).json({
+      success: true,
+      analysis: parsed,
+      pdfBase64,
+      pdfFilename,
+      email: {
+        sent: false,
+        address: maskEmail(orderCheck.userEmail),
+        error: pdfBase64 ? null : "PDF generation failed",
+      },
+      generatedAt,
+      originalMessage:
+        message.substring(0, 200) + (message.length > 200 ? "..." : ""),
+    });
   } catch (err) {
     console.error("Scam report error:", err);
     return res

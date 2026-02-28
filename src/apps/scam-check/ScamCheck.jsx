@@ -248,9 +248,11 @@ export default function ScamCheck() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState(null);
-  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [emailStatus, setEmailStatus] = useState(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const resultRef = useRef(null);
+  const reportRef = useRef(null);
   const textareaRef = useRef(null);
   const scannedMessageRef = useRef("");
   const orderIdRef = useRef(null);
@@ -298,28 +300,35 @@ export default function ScamCheck() {
   // Listen for LemonSqueezy checkout events
   useEffect(() => {
     function onMessage(e) {
+      let data;
       try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (data?.event === "Checkout.Success") {
-          const oid =
-            data?.data?.order?.data?.id ||
-            data?.data?.order?.id ||
-            data?.data?.id;
-          setOrderCompleted(true);
-          setPaymentProcessing(false);
-          if (oid) {
-            orderIdRef.current = String(oid);
-            handleReportGeneration(String(oid));
-          }
-        }
-        if (
-          data?.event === "Checkout.Closed" &&
-          !orderCompleted
-        ) {
-          setPaymentProcessing(false);
-        }
+        data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
       } catch (_) {
-        // Not a LemonSqueezy event
+        return;
+      }
+      if (!data?.event) return;
+
+      console.log("[LS Event]", data.event, JSON.stringify(data).slice(0, 500));
+
+      if (data.event === "Checkout.Success") {
+        const oid =
+          data?.data?.order?.data?.id ||
+          data?.data?.order?.id ||
+          data?.data?.id ||
+          data?.data?.order?.data?.attributes?.identifier;
+        console.log("[LS] Checkout.Success — orderId:", oid);
+        setOrderCompleted(true);
+        setPaymentProcessing(false);
+        if (oid) {
+          orderIdRef.current = String(oid);
+          handleReportGeneration(String(oid));
+        } else {
+          console.error("[LS] Could not extract order ID from:", JSON.stringify(data));
+          setPdfError("Payment confirmed but order ID not found. Please contact support.");
+        }
+      }
+      if (data.event === "Checkout.Closed" && !orderCompleted) {
+        setPaymentProcessing(false);
       }
     }
     window.addEventListener("message", onMessage);
@@ -339,6 +348,23 @@ export default function ScamCheck() {
     }
   };
 
+  function downloadPdfFromBase64(base64, filename) {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }
+
   const handleReportGeneration = async (oid) => {
     setPdfGenerating(true);
     setPdfError(null);
@@ -355,16 +381,19 @@ export default function ScamCheck() {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || "Failed to generate report");
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "scam-forensic-report.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setPdfDownloaded(true);
+      const data = await response.json();
+      setReportData(data);
+      setEmailStatus(data.email || null);
+
+      // Auto-download PDF
+      if (data.pdfBase64) {
+        downloadPdfFromBase64(data.pdfBase64, data.pdfFilename || "scam-forensic-report.pdf");
+      }
+
+      // Scroll to report
+      setTimeout(() => {
+        reportRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 400);
     } catch (err) {
       console.error("Report generation error:", err);
       setPdfError(
@@ -386,7 +415,8 @@ export default function ScamCheck() {
     setPaymentProcessing(false);
     setPdfGenerating(false);
     setPdfError(null);
-    setPdfDownloaded(false);
+    setReportData(null);
+    setEmailStatus(null);
     setOrderCompleted(false);
     orderIdRef.current = null;
 
@@ -424,7 +454,8 @@ export default function ScamCheck() {
     setPaymentProcessing(false);
     setPdfGenerating(false);
     setPdfError(null);
-    setPdfDownloaded(false);
+    setReportData(null);
+    setEmailStatus(null);
     setOrderCompleted(false);
     orderIdRef.current = null;
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -746,8 +777,8 @@ export default function ScamCheck() {
                 </div>
               )}
 
-              {/* Premium CTA */}
-              {showDetails && (
+              {/* Premium CTA / Report Display */}
+              {showDetails && !reportData && (
                 <div style={{
                   textAlign: "center", padding: "36px 24px",
                   background: "rgba(255,255,255,0.02)",
@@ -756,7 +787,7 @@ export default function ScamCheck() {
                   animation: "slideUp 0.6s ease",
                 }}>
                   {/* Pre-purchase state */}
-                  {!orderCompleted && !pdfGenerating && !pdfDownloaded && (
+                  {!orderCompleted && !pdfGenerating && (
                     <>
                       <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
                       <h3 style={{
@@ -769,7 +800,7 @@ export default function ScamCheck() {
                         fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
                         color: "rgba(255,255,255,0.45)", marginBottom: "12px", lineHeight: 1.6,
                       }}>
-                        Get a detailed PDF with deep forensic analysis
+                        Get a detailed report with deep forensic analysis
                         <br />
                         and a shareable safety report.
                       </p>
@@ -782,6 +813,7 @@ export default function ScamCheck() {
                           "Social engineering techniques identified",
                           "How to report to authorities",
                           "5 personalized protection tips",
+                          "PDF download + emailed to you",
                         ].map((item, i) => (
                           <div key={i} style={{
                             display: "flex", gap: "8px", marginBottom: "6px",
@@ -814,7 +846,7 @@ export default function ScamCheck() {
                     </>
                   )}
 
-                  {/* Generating PDF state */}
+                  {/* Generating report state */}
                   {pdfGenerating && (
                     <>
                       <div style={{
@@ -831,7 +863,7 @@ export default function ScamCheck() {
                         fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
                         color: "rgba(255,255,255,0.45)", lineHeight: 1.6,
                       }}>
-                        Running deep analysis and building your PDF.
+                        Running deep forensic analysis.
                         <br />This usually takes 10-15 seconds.
                       </p>
                       <div style={{
@@ -847,41 +879,9 @@ export default function ScamCheck() {
                     </>
                   )}
 
-                  {/* PDF Downloaded state */}
-                  {pdfDownloaded && !pdfGenerating && (
-                    <>
-                      <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"\u2705"}</div>
-                      <h3 style={{
-                        fontFamily: "'Playfair Display', serif",
-                        fontSize: "18px", fontWeight: 700, marginBottom: "8px",
-                      }}>
-                        Report Downloaded!
-                      </h3>
-                      <p style={{
-                        fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
-                        color: "rgba(255,255,255,0.45)", marginBottom: "16px", lineHeight: 1.6,
-                      }}>
-                        Your full forensic report has been saved as a PDF.
-                      </p>
-                      <button
-                        onClick={() => handleReportGeneration(orderIdRef.current)}
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "12px", padding: "12px 24px",
-                          fontFamily: "'Space Mono', monospace", fontSize: "12px",
-                          fontWeight: 700, color: "rgba(255,255,255,0.6)",
-                          cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px",
-                        }}
-                      >
-                        Download Again
-                      </button>
-                    </>
-                  )}
-
                   {/* Error state */}
                   {pdfError && !pdfGenerating && (
-                    <div style={{ marginTop: pdfDownloaded ? "16px" : 0 }}>
+                    <div>
                       <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\u26A0\uFE0F"}</div>
                       <p style={{
                         fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
@@ -905,6 +905,345 @@ export default function ScamCheck() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* === FULL ON-SCREEN FORENSIC REPORT === */}
+              {showDetails && reportData && (
+                <div
+                  ref={reportRef}
+                  style={{ animation: "slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                >
+                  {/* Action Bar */}
+                  <div style={{
+                    display: "flex", gap: "10px", justifyContent: "center",
+                    flexWrap: "wrap", marginBottom: "32px",
+                  }}>
+                    {reportData.pdfBase64 && (
+                      <button
+                        onClick={() =>
+                          downloadPdfFromBase64(
+                            reportData.pdfBase64,
+                            reportData.pdfFilename || "scam-forensic-report.pdf"
+                          )
+                        }
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "8px",
+                          background: "linear-gradient(135deg, #00E5FF, #06b6d4)",
+                          border: "none", borderRadius: "100px", padding: "10px 24px",
+                          fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                          fontWeight: 700, color: "#000", cursor: "pointer",
+                          textTransform: "uppercase", letterSpacing: "1px",
+                        }}
+                      >
+                        {"\u2B07"} Download PDF
+                      </button>
+                    )}
+                    {emailStatus?.sent && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                        background: "rgba(74,222,128,0.08)",
+                        border: "1px solid rgba(74,222,128,0.25)",
+                        borderRadius: "100px", padding: "10px 20px",
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px", color: "#4ade80",
+                      }}>
+                        {"\u2709\uFE0F"} Sent to {emailStatus.address}
+                      </span>
+                    )}
+                    {emailStatus && !emailStatus.sent && (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                        background: "rgba(251,191,36,0.08)",
+                        border: "1px solid rgba(251,191,36,0.25)",
+                        borderRadius: "100px", padding: "10px 20px",
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px", color: "#fbbf24",
+                      }}>
+                        Email unavailable — PDF downloaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Executive Summary */}
+                  {reportData.analysis?.executive_summary && (
+                    <div style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                    }}>
+                      <h3 style={{
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                        textTransform: "uppercase", letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)", marginBottom: "20px",
+                      }}>
+                        Executive Summary
+                      </h3>
+                      {reportData.analysis.executive_summary.split("\n").filter((p) => p.trim()).map((paragraph, i) => (
+                        <p key={i} style={{
+                          fontFamily: "'DM Sans', sans-serif", fontSize: "14px",
+                          color: "rgba(255,255,255,0.7)", lineHeight: 1.8, marginBottom: "16px",
+                        }}>
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Detailed Red Flag Analysis */}
+                  <div style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                  }}>
+                    <h3 style={{
+                      fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                      textTransform: "uppercase", letterSpacing: "3px",
+                      color: "rgba(255,255,255,0.35)", marginBottom: "28px",
+                    }}>
+                      Detailed Red Flag Analysis
+                    </h3>
+                    {SCAM_CATEGORIES.map((cat, i) => {
+                      const catData = reportData.analysis?.categories?.[cat];
+                      if (!catData) return null;
+                      return (
+                        <div key={cat} style={{ marginBottom: "28px" }}>
+                          <CategoryBar
+                            name={cat}
+                            score={catData.score ?? 0}
+                            comment={catData.comment || "No issues detected"}
+                            delay={i * 150}
+                          />
+                          {catData.detailed_analysis && (
+                            <p style={{
+                              fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                              color: "rgba(255,255,255,0.55)", lineHeight: 1.7,
+                              marginTop: "4px", paddingLeft: "4px",
+                              borderLeft: "2px solid rgba(255,255,255,0.08)",
+                              marginLeft: "2px", paddingTop: "4px", paddingBottom: "4px",
+                            }}>
+                              {catData.detailed_analysis}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Technical Indicators */}
+                  {reportData.analysis?.technical_indicators && (
+                    <div style={{
+                      background: "linear-gradient(135deg, rgba(0,229,255,0.06), rgba(6,182,212,0.04))",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                    }}>
+                      <h3 style={{
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                        textTransform: "uppercase", letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)", marginBottom: "24px",
+                      }}>
+                        {"\uD83D\uDD0D"} Technical Indicators
+                      </h3>
+                      {[
+                        { label: "URL Analysis", text: reportData.analysis.technical_indicators.url_analysis },
+                        { label: "Language Patterns", text: reportData.analysis.technical_indicators.language_patterns },
+                      ].filter((n) => n.text).map((item, i) => (
+                        <div key={i} style={{ marginBottom: "20px" }}>
+                          <h4 style={{
+                            fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                            fontWeight: 700, color: "rgba(255,255,255,0.6)",
+                            textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px",
+                          }}>
+                            {item.label}
+                          </h4>
+                          <p style={{
+                            fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                            color: "rgba(255,255,255,0.55)", lineHeight: 1.7,
+                          }}>
+                            {item.text}
+                          </p>
+                        </div>
+                      ))}
+                      {reportData.analysis.technical_indicators.social_engineering?.length > 0 && (
+                        <div>
+                          <h4 style={{
+                            fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                            fontWeight: 700, color: "rgba(255,255,255,0.6)",
+                            textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px",
+                          }}>
+                            Social Engineering Techniques
+                          </h4>
+                          {reportData.analysis.technical_indicators.social_engineering.map((technique, i) => (
+                            <div key={i} style={{
+                              display: "flex", gap: "10px", marginBottom: "8px", alignItems: "flex-start",
+                            }}>
+                              <span style={{
+                                color: "#00E5FF", fontFamily: "'Space Mono', monospace",
+                                fontSize: "12px", minWidth: "16px",
+                              }}>
+                                {"\u203A"}
+                              </span>
+                              <p style={{
+                                fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                                color: "rgba(255,255,255,0.55)", lineHeight: 1.6,
+                              }}>
+                                {technique}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Similar Scam Patterns */}
+                  {reportData.analysis?.similar_scam_patterns?.length > 0 && (
+                    <div style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                    }}>
+                      <h3 style={{
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                        textTransform: "uppercase", letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)", marginBottom: "20px",
+                      }}>
+                        {"\uD83C\uDFAD"} Similar Known Scam Patterns
+                      </h3>
+                      {reportData.analysis.similar_scam_patterns.map((pattern, i) => (
+                        <div key={i} style={{
+                          display: "flex", gap: "12px", marginBottom: "12px", alignItems: "flex-start",
+                        }}>
+                          <span style={{
+                            fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                            fontWeight: 700, color: "#f97316", minWidth: "20px",
+                          }}>
+                            {i + 1}.
+                          </span>
+                          <p style={{
+                            fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                            color: "rgba(255,255,255,0.65)", lineHeight: 1.6,
+                          }}>
+                            {pattern}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* How to Report */}
+                  {reportData.analysis?.how_to_report?.length > 0 && (
+                    <div style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                    }}>
+                      <h3 style={{
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                        textTransform: "uppercase", letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)", marginBottom: "20px",
+                      }}>
+                        {"\uD83D\uDCE2"} How to Report
+                      </h3>
+                      {reportData.analysis.how_to_report.map((authority, i) => (
+                        <div key={i} style={{
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid rgba(255,255,255,0.05)",
+                          borderRadius: "12px", padding: "20px",
+                          marginBottom: i < reportData.analysis.how_to_report.length - 1 ? "12px" : 0,
+                        }}>
+                          <div style={{
+                            display: "flex", justifyContent: "space-between",
+                            alignItems: "center", marginBottom: "8px",
+                          }}>
+                            <span style={{
+                              fontFamily: "'Space Mono', monospace", fontSize: "13px",
+                              fontWeight: 700, color: "rgba(255,255,255,0.85)",
+                            }}>
+                              {authority.authority}
+                            </span>
+                            {authority.url && (
+                              <span style={{
+                                fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                                color: "#00E5FF",
+                              }}>
+                                {authority.url}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{
+                            fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                            color: "rgba(255,255,255,0.55)", lineHeight: 1.6,
+                          }}>
+                            {authority.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Protection Tips */}
+                  {reportData.analysis?.protection_tips?.length > 0 && (
+                    <div style={{
+                      background: "linear-gradient(135deg, rgba(74,222,128,0.06), rgba(34,211,238,0.04))",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                    }}>
+                      <h3 style={{
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                        textTransform: "uppercase", letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)", marginBottom: "20px",
+                      }}>
+                        {"\uD83D\uDEE1\uFE0F"} Protection Tips
+                      </h3>
+                      {reportData.analysis.protection_tips.map((tip, i) => (
+                        <div key={i} style={{
+                          display: "flex", gap: "12px",
+                          marginBottom: i < reportData.analysis.protection_tips.length - 1 ? "12px" : 0,
+                          alignItems: "flex-start",
+                        }}>
+                          <span style={{
+                            fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                            fontWeight: 700, color: "#4ade80", minWidth: "20px",
+                          }}>
+                            {i + 1}.
+                          </span>
+                          <p style={{
+                            fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                            color: "rgba(255,255,255,0.65)", lineHeight: 1.6,
+                          }}>
+                            {tip}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Bottom Action Bar */}
+                  <div style={{
+                    display: "flex", gap: "10px", justifyContent: "center",
+                    flexWrap: "wrap", marginBottom: "32px",
+                  }}>
+                    {reportData.pdfBase64 && (
+                      <button
+                        onClick={() =>
+                          downloadPdfFromBase64(
+                            reportData.pdfBase64,
+                            reportData.pdfFilename || "scam-forensic-report.pdf"
+                          )
+                        }
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "8px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "100px", padding: "10px 24px",
+                          fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                          fontWeight: 700, color: "rgba(255,255,255,0.6)",
+                          cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px",
+                        }}
+                      >
+                        {"\u2B07"} Download PDF Again
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

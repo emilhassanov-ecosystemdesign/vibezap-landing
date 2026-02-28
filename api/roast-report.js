@@ -1,4 +1,6 @@
 import generateRoastPdf from "./lib/generate-roast-pdf.js";
+import { verifyOrder } from "./lib/verify-order.js";
+import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
 
 // In-memory rate limiting
 const rateLimit = new Map();
@@ -20,35 +22,6 @@ function checkRateLimit(ip) {
   }
   entry.count++;
   return null;
-}
-
-async function verifyOrder(orderId, apiKey) {
-  const response = await fetch(
-    `https://api.lemonsqueezy.com/v1/orders/${orderId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/vnd.api+json",
-      },
-    }
-  );
-
-  if (!response.ok) return { valid: false, reason: "Order not found" };
-
-  const data = await response.json();
-  const attrs = data?.data?.attributes;
-  if (!attrs) return { valid: false, reason: "Invalid order data" };
-
-  if (attrs.status !== "paid") {
-    return { valid: false, reason: "Order not paid" };
-  }
-
-  // Verify it's a $5 order (total is in cents)
-  if (attrs.total !== 500) {
-    return { valid: false, reason: "Order amount mismatch" };
-  }
-
-  return { valid: true };
 }
 
 const ENHANCED_PROMPT = `You are a brutally honest website critic — think Gordon Ramsay reviewing websites. You have a sharp sense of humor but you're also deeply knowledgeable about web design, UX, copywriting, performance, and trust signals. This is a PAID premium report, so be thorough and provide extraordinary detail.
@@ -123,8 +96,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "API key not configured" });
   }
 
-  // Verify payment
-  const orderCheck = await verifyOrder(orderId, lsApiKey);
+  // Verify payment (now also returns customer email)
+  const orderCheck = await verifyOrder(orderId, lsApiKey, 500);
   if (!orderCheck.valid) {
     return res
       .status(403)
@@ -179,20 +152,70 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: "Incomplete analysis data" });
     }
 
-    // Generate PDF
-    const pdfBuffer = await generateRoastPdf({
-      ...parsed,
-      analyzedUrl: url,
-      generatedAt: new Date().toISOString(),
-    });
+    const generatedAt = new Date().toISOString();
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      'attachment; filename="website-roast-report.pdf"'
-    );
-    res.setHeader("Content-Length", pdfBuffer.length);
-    return res.status(200).send(pdfBuffer);
+    // Generate PDF
+    let pdfBase64 = null;
+    const pdfFilename = "website-roast-report.pdf";
+    try {
+      const pdfBuffer = await generateRoastPdf({
+        ...parsed,
+        analyzedUrl: url,
+        generatedAt,
+      });
+      pdfBase64 = pdfBuffer.toString("base64");
+
+      // Send email with PDF (non-blocking for errors)
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey && orderCheck.userEmail) {
+        try {
+          const emailResult = await sendReportEmail({
+            to: orderCheck.userEmail,
+            userName: orderCheck.userName,
+            subject: `Your Website Roast Report — ${parsed.overall_score}/10`,
+            reportType: "roast",
+            reportData: { ...parsed, analyzedUrl: url },
+            pdfBuffer,
+            pdfFilename,
+            resendApiKey,
+          });
+          return res.status(200).json({
+            success: true,
+            analysis: parsed,
+            pdfBase64,
+            pdfFilename,
+            email: {
+              sent: emailResult.sent,
+              address: maskEmail(orderCheck.userEmail),
+              error: emailResult.sent ? null : emailResult.error,
+            },
+            generatedAt,
+            analyzedUrl: url,
+          });
+        } catch (emailErr) {
+          console.error("Email error (non-fatal):", emailErr);
+          // Fall through to return without email
+        }
+      }
+    } catch (pdfErr) {
+      console.error("PDF generation error (non-fatal):", pdfErr);
+      // Fall through to return without PDF
+    }
+
+    // Return JSON (with or without PDF/email)
+    return res.status(200).json({
+      success: true,
+      analysis: parsed,
+      pdfBase64,
+      pdfFilename,
+      email: {
+        sent: false,
+        address: maskEmail(orderCheck.userEmail),
+        error: pdfBase64 ? null : "PDF generation failed",
+      },
+      generatedAt,
+      analyzedUrl: url,
+    });
   } catch (err) {
     console.error("Roast report error:", err);
     return res

@@ -216,6 +216,156 @@ function TypewriterText({ text, speed = 20, onComplete }) {
   return <>{displayed}<span style={{ opacity: 0.4 }}>|</span></>;
 }
 
+const priorityConfig = {
+  high: { color: "#ff2d55", label: "HIGH", bg: "rgba(255,45,85,0.1)", border: "rgba(255,45,85,0.25)" },
+  medium: { color: "#ff6b35", label: "MED", bg: "rgba(255,107,53,0.1)", border: "rgba(255,107,53,0.25)" },
+  low: { color: "#ffc233", label: "LOW", bg: "rgba(255,194,51,0.1)", border: "rgba(255,194,51,0.25)" },
+};
+
+function FixesSection({ fixes }) {
+  const [expandedGroup, setExpandedGroup] = useState(null);
+  const grouped = { high: [], medium: [], low: [] };
+  fixes.forEach((fix) => {
+    const p = (fix.priority || "medium").toLowerCase();
+    if (grouped[p]) grouped[p].push(fix);
+    else grouped.medium.push(fix);
+  });
+
+  return (
+    <div
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(255,45,85,0.06), rgba(255,107,53,0.04))",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "20px",
+        padding: "32px 28px",
+        marginBottom: "24px",
+      }}
+    >
+      <h3
+        style={{
+          fontFamily: "'Space Mono', monospace",
+          fontSize: "11px",
+          textTransform: "uppercase",
+          letterSpacing: "3px",
+          color: "rgba(255,255,255,0.35)",
+          marginBottom: "24px",
+        }}
+      >
+        {"\uD83E\uDE79"} Specific Fixes ({fixes.length})
+      </h3>
+      {["high", "medium", "low"].map((priority) => {
+        const items = grouped[priority];
+        if (!items.length) return null;
+        const cfg = priorityConfig[priority];
+        const isExpanded = expandedGroup === priority;
+        const displayed = isExpanded ? items : items.slice(0, 3);
+        return (
+          <div key={priority} style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: "11px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                color: cfg.color,
+                marginBottom: "12px",
+              }}
+            >
+              {cfg.label} Priority ({items.length})
+            </div>
+            {displayed.map((fix, i) => (
+              <div
+                key={i}
+                style={{
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  marginBottom: "8px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: "12px",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: "14px",
+                      fontWeight: 700,
+                      color: "rgba(255,255,255,0.85)",
+                    }}
+                  >
+                    {fix.title}
+                  </span>
+                  {fix.category && (
+                    <span
+                      style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: "9px",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        color: "rgba(255,255,255,0.35)",
+                        background: "rgba(255,255,255,0.04)",
+                        padding: "3px 8px",
+                        borderRadius: "4px",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {fix.category}
+                    </span>
+                  )}
+                </div>
+                <p
+                  style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.55)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {fix.description}
+                </p>
+              </div>
+            ))}
+            {items.length > 3 && (
+              <button
+                onClick={() =>
+                  setExpandedGroup(isExpanded ? null : priority)
+                }
+                style={{
+                  background: "none",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "8px",
+                  padding: "8px 16px",
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: "11px",
+                  color: "rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                  width: "100%",
+                  textAlign: "center",
+                }}
+              >
+                {isExpanded
+                  ? "Show less"
+                  : `Show all ${items.length} ${cfg.label.toLowerCase()} priority fixes`}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function LoadingState() {
   const [phase, setPhase] = useState(0);
   const phases = [
@@ -287,9 +437,11 @@ export default function RoastMyWebsite() {
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState(null);
-  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [emailStatus, setEmailStatus] = useState(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const resultRef = useRef(null);
+  const reportRef = useRef(null);
   const orderIdRef = useRef(null);
   const scannedUrlRef = useRef("");
 
@@ -307,25 +459,36 @@ export default function RoastMyWebsite() {
   // Listen for LemonSqueezy checkout events
   useEffect(() => {
     function onMessage(e) {
+      let data;
       try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (data?.event === "Checkout.Success") {
-          const oid =
-            data?.data?.order?.data?.id ||
-            data?.data?.order?.id ||
-            data?.data?.id;
-          setOrderCompleted(true);
-          setPaymentProcessing(false);
-          if (oid) {
-            orderIdRef.current = String(oid);
-            handleReportGeneration(String(oid));
-          }
-        }
-        if (data?.event === "Checkout.Closed" && !orderCompleted) {
-          setPaymentProcessing(false);
-        }
+        data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
       } catch (_) {
-        // Not a LemonSqueezy event
+        return; // Not JSON, not a LemonSqueezy event
+      }
+      if (!data?.event) return;
+
+      console.log("[LS Event]", data.event, JSON.stringify(data).slice(0, 500));
+
+      if (data.event === "Checkout.Success") {
+        // Try multiple paths to extract order ID
+        const oid =
+          data?.data?.order?.data?.id ||
+          data?.data?.order?.id ||
+          data?.data?.id ||
+          data?.data?.order?.data?.attributes?.identifier;
+        console.log("[LS] Checkout.Success — orderId:", oid);
+        setOrderCompleted(true);
+        setPaymentProcessing(false);
+        if (oid) {
+          orderIdRef.current = String(oid);
+          handleReportGeneration(String(oid));
+        } else {
+          console.error("[LS] Could not extract order ID from:", JSON.stringify(data));
+          setPdfError("Payment confirmed but order ID not found. Please contact support.");
+        }
+      }
+      if (data.event === "Checkout.Closed" && !orderCompleted) {
+        setPaymentProcessing(false);
       }
     }
     window.addEventListener("message", onMessage);
@@ -345,6 +508,23 @@ export default function RoastMyWebsite() {
     }
   };
 
+  function downloadPdfFromBase64(base64, filename) {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }
+
   const handleReportGeneration = async (oid) => {
     setPdfGenerating(true);
     setPdfError(null);
@@ -361,16 +541,19 @@ export default function RoastMyWebsite() {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || "Failed to generate report");
       }
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = "website-roast-report.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-      setPdfDownloaded(true);
+      const data = await response.json();
+      setReportData(data);
+      setEmailStatus(data.email || null);
+
+      // Auto-download PDF
+      if (data.pdfBase64) {
+        downloadPdfFromBase64(data.pdfBase64, data.pdfFilename || "website-roast-report.pdf");
+      }
+
+      // Scroll to report
+      setTimeout(() => {
+        reportRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 400);
     } catch (err) {
       console.error("Report generation error:", err);
       setPdfError(err.message || "Something went wrong generating your report.");
@@ -393,7 +576,8 @@ export default function RoastMyWebsite() {
     setPaymentProcessing(false);
     setPdfGenerating(false);
     setPdfError(null);
-    setPdfDownloaded(false);
+    setReportData(null);
+    setEmailStatus(null);
     setOrderCompleted(false);
     orderIdRef.current = null;
 
@@ -809,8 +993,8 @@ export default function RoastMyWebsite() {
                 </div>
               )}
 
-              {/* Upgrade CTA */}
-              {showDetails && (
+              {/* Upgrade CTA / Report Display */}
+              {showDetails && !reportData && (
                 <div
                   style={{
                     textAlign: "center",
@@ -823,7 +1007,7 @@ export default function RoastMyWebsite() {
                   }}
                 >
                   {/* Pre-purchase state */}
-                  {!orderCompleted && !pdfGenerating && !pdfDownloaded && (
+                  {!orderCompleted && !pdfGenerating && (
                     <>
                       <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
                       <h3
@@ -845,7 +1029,7 @@ export default function RoastMyWebsite() {
                           lineHeight: 1.6,
                         }}
                       >
-                        Get a detailed PDF with 30+ specific fixes,
+                        Get a detailed report with 30+ specific fixes,
                         <br />
                         priority rankings, and competitor comparisons.
                       </p>
@@ -862,6 +1046,7 @@ export default function RoastMyWebsite() {
                           "Quick wins you can do today",
                           "Competitor insights & comparisons",
                           "SEO, accessibility & mobile notes",
+                          "PDF download + emailed to you",
                         ].map((item, i) => (
                           <div
                             key={i}
@@ -904,7 +1089,7 @@ export default function RoastMyWebsite() {
                     </>
                   )}
 
-                  {/* Generating PDF state */}
+                  {/* Generating report state */}
                   {pdfGenerating && (
                     <>
                       <div
@@ -934,7 +1119,7 @@ export default function RoastMyWebsite() {
                           lineHeight: 1.6,
                         }}
                       >
-                        Running deep analysis and building your PDF.
+                        Running deep analysis with 30+ specific fixes.
                         <br />
                         This usually takes 15-30 seconds.
                       </p>
@@ -961,55 +1146,9 @@ export default function RoastMyWebsite() {
                     </>
                   )}
 
-                  {/* PDF Downloaded state */}
-                  {pdfDownloaded && !pdfGenerating && (
-                    <>
-                      <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"\u2705"}</div>
-                      <h3
-                        style={{
-                          fontFamily: "'Playfair Display', serif",
-                          fontSize: "18px",
-                          fontWeight: 700,
-                          marginBottom: "8px",
-                        }}
-                      >
-                        Report Downloaded!
-                      </h3>
-                      <p
-                        style={{
-                          fontFamily: "'DM Sans', sans-serif",
-                          fontSize: "13px",
-                          color: "rgba(255,255,255,0.45)",
-                          marginBottom: "16px",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        Your full roast report has been saved as a PDF.
-                      </p>
-                      <button
-                        onClick={() => handleReportGeneration(orderIdRef.current)}
-                        style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: "12px",
-                          padding: "12px 24px",
-                          fontFamily: "'Space Mono', monospace",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          color: "rgba(255,255,255,0.6)",
-                          cursor: "pointer",
-                          textTransform: "uppercase",
-                          letterSpacing: "1px",
-                        }}
-                      >
-                        Download Again
-                      </button>
-                    </>
-                  )}
-
                   {/* Error state */}
                   {pdfError && !pdfGenerating && (
-                    <div style={{ marginTop: pdfDownloaded ? "16px" : 0 }}>
+                    <div>
                       <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\u26A0\uFE0F"}</div>
                       <p
                         style={{
@@ -1044,6 +1183,418 @@ export default function RoastMyWebsite() {
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* === FULL ON-SCREEN REPORT === */}
+              {showDetails && reportData && (
+                <div
+                  ref={reportRef}
+                  style={{ animation: "slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)" }}
+                >
+                  {/* Action Bar */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      marginBottom: "32px",
+                    }}
+                  >
+                    {reportData.pdfBase64 && (
+                      <button
+                        onClick={() =>
+                          downloadPdfFromBase64(
+                            reportData.pdfBase64,
+                            reportData.pdfFilename || "website-roast-report.pdf"
+                          )
+                        }
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          background: "linear-gradient(135deg, #ff2d55, #ff6b35)",
+                          border: "none",
+                          borderRadius: "100px",
+                          padding: "10px 24px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: "white",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        {"\u2B07"} Download PDF
+                      </button>
+                    )}
+                    {emailStatus?.sent && (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "rgba(74,222,128,0.08)",
+                          border: "1px solid rgba(74,222,128,0.25)",
+                          borderRadius: "100px",
+                          padding: "10px 20px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          color: "#4ade80",
+                        }}
+                      >
+                        {"\u2709\uFE0F"} Sent to {emailStatus.address}
+                      </span>
+                    )}
+                    {emailStatus && !emailStatus.sent && (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "rgba(251,191,36,0.08)",
+                          border: "1px solid rgba(251,191,36,0.25)",
+                          borderRadius: "100px",
+                          padding: "10px 20px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          color: "#fbbf24",
+                        }}
+                      >
+                        Email unavailable — PDF downloaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Executive Summary */}
+                  {reportData.analysis?.executive_summary && (
+                    <div
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: "20px",
+                        padding: "32px 28px",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "3px",
+                          color: "rgba(255,255,255,0.35)",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        Executive Summary
+                      </h3>
+                      {reportData.analysis.executive_summary
+                        .split("\n")
+                        .filter((p) => p.trim())
+                        .map((paragraph, i) => (
+                          <p
+                            key={i}
+                            style={{
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: "14px",
+                              color: "rgba(255,255,255,0.7)",
+                              lineHeight: 1.8,
+                              marginBottom: "16px",
+                            }}
+                          >
+                            {paragraph}
+                          </p>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Detailed Category Analysis */}
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px",
+                      padding: "32px 28px",
+                      marginBottom: "24px",
+                    }}
+                  >
+                    <h3
+                      style={{
+                        fontFamily: "'Space Mono', monospace",
+                        fontSize: "11px",
+                        textTransform: "uppercase",
+                        letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)",
+                        marginBottom: "28px",
+                      }}
+                    >
+                      Detailed Analysis
+                    </h3>
+                    {ROAST_CATEGORIES.map((cat, i) => {
+                      const catData = reportData.analysis?.categories?.[cat];
+                      if (!catData) return null;
+                      return (
+                        <div key={cat} style={{ marginBottom: "28px" }}>
+                          <CategoryBar
+                            name={cat}
+                            score={catData.score || 5}
+                            comment={catData.comment || ""}
+                            delay={i * 150}
+                          />
+                          {catData.detailed_analysis && (
+                            <p
+                              style={{
+                                fontFamily: "'DM Sans', sans-serif",
+                                fontSize: "13px",
+                                color: "rgba(255,255,255,0.55)",
+                                lineHeight: 1.7,
+                                marginTop: "4px",
+                                paddingLeft: "4px",
+                                borderLeft: "2px solid rgba(255,255,255,0.08)",
+                                marginLeft: "2px",
+                                paddingTop: "4px",
+                                paddingBottom: "4px",
+                              }}
+                            >
+                              {catData.detailed_analysis}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Priority Fixes */}
+                  {reportData.analysis?.specific_fixes?.length > 0 && (
+                    <FixesSection fixes={reportData.analysis.specific_fixes} />
+                  )}
+
+                  {/* Quick Wins */}
+                  {reportData.analysis?.quick_wins?.length > 0 && (
+                    <div
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(74,222,128,0.06), rgba(34,211,238,0.04))",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: "20px",
+                        padding: "32px 28px",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "3px",
+                          color: "rgba(255,255,255,0.35)",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        {"\u26A1"} Quick Wins
+                      </h3>
+                      {reportData.analysis.quick_wins.map((win, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            gap: "12px",
+                            marginBottom: i < reportData.analysis.quick_wins.length - 1 ? "12px" : 0,
+                            alignItems: "flex-start",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: "'Space Mono', monospace",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              color: "#4ade80",
+                              minWidth: "20px",
+                            }}
+                          >
+                            {i + 1}.
+                          </span>
+                          <p
+                            style={{
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: "13px",
+                              color: "rgba(255,255,255,0.65)",
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {win}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Competitor Insights */}
+                  {reportData.analysis?.competitor_insights?.length > 0 && (
+                    <div
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: "20px",
+                        padding: "32px 28px",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "3px",
+                          color: "rgba(255,255,255,0.35)",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        {"\uD83C\uDFC6"} Competitor Insights
+                      </h3>
+                      {reportData.analysis.competitor_insights.map((insight, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            background: "rgba(255,255,255,0.02)",
+                            border: "1px solid rgba(255,255,255,0.05)",
+                            borderRadius: "12px",
+                            padding: "20px",
+                            marginBottom:
+                              i < reportData.analysis.competitor_insights.length - 1 ? "12px" : 0,
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: "14px",
+                              color: "rgba(255,255,255,0.75)",
+                              lineHeight: 1.6,
+                              marginBottom: "8px",
+                            }}
+                          >
+                            {insight.suggestion}
+                          </p>
+                          <p
+                            style={{
+                              fontFamily: "'Space Mono', monospace",
+                              fontSize: "11px",
+                              color: "rgba(255,107,53,0.7)",
+                            }}
+                          >
+                            Example: {insight.example}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Technical Notes */}
+                  {(reportData.analysis?.seo_notes ||
+                    reportData.analysis?.accessibility_notes ||
+                    reportData.analysis?.mobile_notes) && (
+                    <div
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: "20px",
+                        padding: "32px 28px",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          textTransform: "uppercase",
+                          letterSpacing: "3px",
+                          color: "rgba(255,255,255,0.35)",
+                          marginBottom: "24px",
+                        }}
+                      >
+                        {"\uD83D\uDD27"} Technical Notes
+                      </h3>
+                      {[
+                        { label: "SEO", text: reportData.analysis.seo_notes },
+                        {
+                          label: "Accessibility",
+                          text: reportData.analysis.accessibility_notes,
+                        },
+                        { label: "Mobile", text: reportData.analysis.mobile_notes },
+                      ]
+                        .filter((n) => n.text)
+                        .map((note, i) => (
+                          <div key={i} style={{ marginBottom: "20px" }}>
+                            <h4
+                              style={{
+                                fontFamily: "'Space Mono', monospace",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                color: "rgba(255,255,255,0.6)",
+                                textTransform: "uppercase",
+                                letterSpacing: "1px",
+                                marginBottom: "8px",
+                              }}
+                            >
+                              {note.label}
+                            </h4>
+                            <p
+                              style={{
+                                fontFamily: "'DM Sans', sans-serif",
+                                fontSize: "13px",
+                                color: "rgba(255,255,255,0.55)",
+                                lineHeight: 1.7,
+                              }}
+                            >
+                              {note.text}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Bottom Action Bar */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      justifyContent: "center",
+                      flexWrap: "wrap",
+                      marginBottom: "32px",
+                    }}
+                  >
+                    {reportData.pdfBase64 && (
+                      <button
+                        onClick={() =>
+                          downloadPdfFromBase64(
+                            reportData.pdfBase64,
+                            reportData.pdfFilename || "website-roast-report.pdf"
+                          )
+                        }
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "100px",
+                          padding: "10px 24px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: "rgba(255,255,255,0.6)",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        {"\u2B07"} Download PDF Again
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

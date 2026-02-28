@@ -245,8 +245,15 @@ export default function ScamCheck() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [orderCompleted, setOrderCompleted] = useState(false);
   const resultRef = useRef(null);
   const textareaRef = useRef(null);
+  const scannedMessageRef = useRef("");
+  const orderIdRef = useRef(null);
 
   // Route-specific meta tags
   useEffect(() => {
@@ -277,13 +284,111 @@ export default function ScamCheck() {
     };
   }, []);
 
+  // Load LemonSqueezy overlay script
+  useEffect(() => {
+    if (!document.getElementById("lemonsqueezy-js")) {
+      const script = document.createElement("script");
+      script.id = "lemonsqueezy-js";
+      script.src = "https://assets.lemonsqueezy.com/lemon.js";
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // Listen for LemonSqueezy checkout events
+  useEffect(() => {
+    function onMessage(e) {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.event === "Checkout.Success") {
+          const oid =
+            data?.data?.order?.data?.id ||
+            data?.data?.order?.id ||
+            data?.data?.id;
+          setOrderCompleted(true);
+          setPaymentProcessing(false);
+          if (oid) {
+            orderIdRef.current = String(oid);
+            handleReportGeneration(String(oid));
+          }
+        }
+        if (
+          data?.event === "Checkout.Closed" &&
+          !orderCompleted
+        ) {
+          setPaymentProcessing(false);
+        }
+      } catch (_) {
+        // Not a LemonSqueezy event
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [orderCompleted]);
+
+  const handleGetReport = () => {
+    setPaymentProcessing(true);
+    setPdfError(null);
+    const checkoutUrl =
+      "https://vibezap.lemonsqueezy.com/checkout/buy/d96e2de1-52de-49aa-879b-693d33f1c60a?embed=1";
+    if (window.LemonSqueezy) {
+      window.LemonSqueezy.Url.Open(checkoutUrl);
+    } else {
+      window.open(checkoutUrl, "_blank");
+      setPaymentProcessing(false);
+    }
+  };
+
+  const handleReportGeneration = async (oid) => {
+    setPdfGenerating(true);
+    setPdfError(null);
+    try {
+      const response = await fetch("/api/scam-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: scannedMessageRef.current,
+          orderId: oid,
+        }),
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to generate report");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "scam-forensic-report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setPdfDownloaded(true);
+    } catch (err) {
+      console.error("Report generation error:", err);
+      setPdfError(
+        err.message || "Something went wrong generating your report."
+      );
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
   const checkMessage = async () => {
     if (!message.trim()) return;
 
+    scannedMessageRef.current = message.trim();
     setLoading(true);
     setError(null);
     setResult(null);
     setShowDetails(false);
+    setPaymentProcessing(false);
+    setPdfGenerating(false);
+    setPdfError(null);
+    setPdfDownloaded(false);
+    setOrderCompleted(false);
+    orderIdRef.current = null;
 
     try {
       const response = await fetch("/api/scam-check", {
@@ -316,6 +421,12 @@ export default function ScamCheck() {
     setShowDetails(false);
     setError(null);
     setMessage("");
+    setPaymentProcessing(false);
+    setPdfGenerating(false);
+    setPdfError(null);
+    setPdfDownloaded(false);
+    setOrderCompleted(false);
+    orderIdRef.current = null;
     window.scrollTo({ top: 0, behavior: "smooth" });
     setTimeout(() => textareaRef.current?.focus(), 400);
   };
@@ -644,37 +755,156 @@ export default function ScamCheck() {
                   borderRadius: "20px", marginBottom: "32px",
                   animation: "slideUp 0.6s ease",
                 }}>
-                  <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
-                  <h3 style={{
-                    fontFamily: "'Playfair Display', serif",
-                    fontSize: "20px", fontWeight: 700, marginBottom: "8px",
-                  }}>
-                    Want the Full Forensic Report?
-                  </h3>
-                  <p style={{
-                    fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
-                    color: "rgba(255,255,255,0.45)", marginBottom: "20px", lineHeight: 1.6,
-                  }}>
-                    Get a detailed PDF with technical indicators,
-                    <br />
-                    header analysis tips, and a shareable safety report.
-                  </p>
-                  <a
-                    href="https://vibezap.lemonsqueezy.com/checkout/buy/d96e2de1-52de-49aa-879b-693d33f1c60a"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "inline-block",
-                      background: "linear-gradient(135deg, #00E5FF, #06b6d4)",
-                      border: "none", borderRadius: "12px", padding: "14px 32px",
-                      fontFamily: "'Space Mono', monospace", fontSize: "13px",
-                      fontWeight: 700, color: "#000", cursor: "pointer",
-                      textTransform: "uppercase", letterSpacing: "2px",
-                      textDecoration: "none",
-                    }}
-                  >
-                    Get Full Report &mdash; $3
-                  </a>
+                  {/* Pre-purchase state */}
+                  {!orderCompleted && !pdfGenerating && !pdfDownloaded && (
+                    <>
+                      <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
+                      <h3 style={{
+                        fontFamily: "'Playfair Display', serif",
+                        fontSize: "20px", fontWeight: 700, marginBottom: "8px",
+                      }}>
+                        Want the Full Forensic Report?
+                      </h3>
+                      <p style={{
+                        fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                        color: "rgba(255,255,255,0.45)", marginBottom: "12px", lineHeight: 1.6,
+                      }}>
+                        Get a detailed PDF with deep forensic analysis
+                        <br />
+                        and a shareable safety report.
+                      </p>
+                      <div style={{
+                        textAlign: "left", maxWidth: "320px", margin: "0 auto 20px",
+                      }}>
+                        {[
+                          "Deep forensic analysis (3x more detail)",
+                          "Technical indicator breakdown",
+                          "Social engineering techniques identified",
+                          "How to report to authorities",
+                          "5 personalized protection tips",
+                        ].map((item, i) => (
+                          <div key={i} style={{
+                            display: "flex", gap: "8px", marginBottom: "6px",
+                            fontFamily: "'DM Sans', sans-serif", fontSize: "12px",
+                            color: "rgba(255,255,255,0.5)",
+                          }}>
+                            <span style={{ color: "#00E5FF", flexShrink: 0 }}>{"\u2713"}</span>
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleGetReport}
+                        disabled={paymentProcessing}
+                        style={{
+                          display: "inline-block",
+                          background: paymentProcessing
+                            ? "rgba(255,255,255,0.05)"
+                            : "linear-gradient(135deg, #00E5FF, #06b6d4)",
+                          border: "none", borderRadius: "12px", padding: "14px 32px",
+                          fontFamily: "'Space Mono', monospace", fontSize: "13px",
+                          fontWeight: 700,
+                          color: paymentProcessing ? "rgba(255,255,255,0.3)" : "#000",
+                          cursor: paymentProcessing ? "not-allowed" : "pointer",
+                          textTransform: "uppercase", letterSpacing: "2px",
+                        }}
+                      >
+                        {paymentProcessing ? "Processing..." : "Get Full Report \u2014 $3"}
+                      </button>
+                    </>
+                  )}
+
+                  {/* Generating PDF state */}
+                  {pdfGenerating && (
+                    <>
+                      <div style={{
+                        fontSize: "48px", marginBottom: "16px",
+                        animation: "scamPulse 1.5s ease-in-out infinite",
+                      }}>{"\uD83D\uDCDD"}</div>
+                      <h3 style={{
+                        fontFamily: "'Playfair Display', serif",
+                        fontSize: "18px", fontWeight: 700, marginBottom: "8px",
+                      }}>
+                        Generating Your Forensic Report...
+                      </h3>
+                      <p style={{
+                        fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                        color: "rgba(255,255,255,0.45)", lineHeight: 1.6,
+                      }}>
+                        Running deep analysis and building your PDF.
+                        <br />This usually takes 10-15 seconds.
+                      </p>
+                      <div style={{
+                        width: "200px", height: "2px", background: "rgba(255,255,255,0.1)",
+                        margin: "20px auto", borderRadius: "1px", overflow: "hidden",
+                      }}>
+                        <div style={{
+                          width: "40%", height: "100%",
+                          background: "linear-gradient(90deg, #00E5FF, #06b6d4)",
+                          borderRadius: "1px", animation: "scamLoading 1.5s ease-in-out infinite",
+                        }} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* PDF Downloaded state */}
+                  {pdfDownloaded && !pdfGenerating && (
+                    <>
+                      <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"\u2705"}</div>
+                      <h3 style={{
+                        fontFamily: "'Playfair Display', serif",
+                        fontSize: "18px", fontWeight: 700, marginBottom: "8px",
+                      }}>
+                        Report Downloaded!
+                      </h3>
+                      <p style={{
+                        fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                        color: "rgba(255,255,255,0.45)", marginBottom: "16px", lineHeight: 1.6,
+                      }}>
+                        Your full forensic report has been saved as a PDF.
+                      </p>
+                      <button
+                        onClick={() => handleReportGeneration(orderIdRef.current)}
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "12px", padding: "12px 24px",
+                          fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                          fontWeight: 700, color: "rgba(255,255,255,0.6)",
+                          cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px",
+                        }}
+                      >
+                        Download Again
+                      </button>
+                    </>
+                  )}
+
+                  {/* Error state */}
+                  {pdfError && !pdfGenerating && (
+                    <div style={{ marginTop: pdfDownloaded ? "16px" : 0 }}>
+                      <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\u26A0\uFE0F"}</div>
+                      <p style={{
+                        fontFamily: "'DM Sans', sans-serif", fontSize: "13px",
+                        color: "rgba(239,68,68,0.8)", marginBottom: "16px", lineHeight: 1.6,
+                      }}>
+                        {pdfError}
+                      </p>
+                      {orderIdRef.current && (
+                        <button
+                          onClick={() => handleReportGeneration(orderIdRef.current)}
+                          style={{
+                            background: "linear-gradient(135deg, #00E5FF, #06b6d4)",
+                            border: "none", borderRadius: "12px", padding: "12px 24px",
+                            fontFamily: "'Space Mono', monospace", fontSize: "12px",
+                            fontWeight: 700, color: "#000", cursor: "pointer",
+                            textTransform: "uppercase", letterSpacing: "1px",
+                          }}
+                        >
+                          Try Again
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

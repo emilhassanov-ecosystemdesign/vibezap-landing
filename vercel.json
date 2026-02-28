@@ -4,5 +4,10 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/scam-report.js": {
+      "maxDuration": 10
+    }
+  }
 }

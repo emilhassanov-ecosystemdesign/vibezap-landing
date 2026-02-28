@@ -3,7 +3,7 @@
 ## Route: /scam-check
 ## API: /api/scam-check
 ## Status: Live
-## Price: Free (rate-limited)
+## Price: Free (rate-limited) / $3 Full Forensic Report PDF
 
 ## What It Does
 AI-powered scam detection tool. Users paste suspicious emails, text messages, or DMs and get an instant risk analysis with a detailed breakdown of scam tactics detected.
@@ -38,6 +38,37 @@ AI-powered scam detection tool. Users paste suspicious emails, text messages, or
   ```
 - **Model:** claude-sonnet-4-20250514
 - **Rate Limit:** 5 req/hour per IP
+
+## Premium Flow ($3 Full Forensic Report)
+
+### User Flow
+1. User completes free scan (above)
+2. CTA appears: "Want the Full Forensic Report?"
+3. User clicks "Get Full Report — $3" → LemonSqueezy overlay checkout opens
+4. After payment, `Checkout.Success` event fires with order ID
+5. Frontend calls `POST /api/scam-report` with original message + order ID
+6. Backend verifies payment via LemonSqueezy API, runs enhanced Claude analysis, generates PDF
+7. PDF downloads automatically
+
+### Premium API
+- **Endpoint:** POST /api/scam-report
+- **Input:** `{ "message": "string", "orderId": "string" }`
+- **Output:** PDF file (`application/pdf`)
+- **Model:** claude-sonnet-4-20250514 (2000 max_tokens vs free tier's 1200)
+- **Rate Limit:** 10 req/hour per IP
+- **Payment verification:** LemonSqueezy API order check (status=paid, total=$3)
+
+### PDF Contents
+- **Page 1:** VibeZap branding, verdict badge, risk score, executive summary, original message
+- **Page 2:** Detailed red flag analysis (6 categories with 2-3 sentence explanations each)
+- **Page 3:** Technical indicators, similar scam patterns, how to report, protection tips
+
+### Environment Variables
+- `ANTHROPIC_API_KEY` — Claude API (shared with free tier)
+- `LEMONSQUEEZY_API_KEY` — Order verification
+
+### Dependencies
+- `pdfkit` — PDF generation (serverless-compatible, <5MB)
 
 ## Design
 - **Theme:** Cyan/teal security palette with green-to-red risk colors

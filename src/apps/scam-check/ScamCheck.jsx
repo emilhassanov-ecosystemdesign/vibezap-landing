@@ -660,7 +660,7 @@ export default function ScamCheck() {
                     header analysis tips, and a shareable safety report.
                   </p>
                   <a
-                    href="#lemon-checkout-scam-check"
+                    href="https://vibezap.lemonsqueezy.com/checkout/buy/d96e2de1-52de-49aa-879b-693d33f1c60a"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{

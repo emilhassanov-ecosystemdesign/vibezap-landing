@@ -251,13 +251,13 @@ export default function ScamCheck() {
   const [reportData, setReportData] = useState(null);
   const [emailStatus, setEmailStatus] = useState(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
-  const [manualOrderId, setManualOrderId] = useState("");
-  const [showManualEntry, setShowManualEntry] = useState(false);
   const resultRef = useRef(null);
   const reportRef = useRef(null);
   const textareaRef = useRef(null);
   const scannedMessageRef = useRef("");
   const orderIdRef = useRef(null);
+  const pollIntervalRef = useRef(null);
+  const checkoutOpenedAtRef = useRef(null);
 
   // Route-specific meta tags
   useEffect(() => {
@@ -294,14 +294,14 @@ export default function ScamCheck() {
     console.log("[LS Event]", event.event, JSON.stringify(event).slice(0, 500));
 
     if (event.event === "Checkout.Success") {
-      // Order data is directly in event.data (LemonSqueezy Order object)
+      stopPolling(); // LS event fired — stop polling
       const orderData = event.data;
       const oid =
         orderData?.id ||
         orderData?.order_number ||
         orderData?.attributes?.identifier ||
         orderData?.attributes?.order_number;
-      console.log("[LS] Checkout.Success — orderId:", oid, "full data:", JSON.stringify(orderData).slice(0, 300));
+      console.log("[LS] Checkout.Success — orderId:", oid);
       setOrderCompleted(true);
       setPaymentProcessing(false);
       if (oid) {
@@ -313,7 +313,7 @@ export default function ScamCheck() {
       }
     }
     if (event.event === "Checkout.Closed") {
-      setPaymentProcessing(false);
+      // Don't stop polling — user may have closed after paying
     }
   };
 
@@ -345,6 +345,47 @@ export default function ScamCheck() {
     }
   }, []);
 
+  // Stop any active payment polling
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
+  // Poll backend for a recent paid order
+  const startPaymentPolling = () => {
+    stopPolling();
+    const afterTs = new Date().toISOString();
+    checkoutOpenedAtRef.current = afterTs;
+    let attempts = 0;
+    const maxAttempts = 60; // 3s * 60 = 3 minutes max
+
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        stopPolling();
+        return;
+      }
+      try {
+        const resp = await fetch(`/api/check-payment?product=scam&after=${encodeURIComponent(afterTs)}`);
+        const data = await resp.json();
+        if (data.found && data.orderId) {
+          stopPolling();
+          setOrderCompleted(true);
+          setPaymentProcessing(false);
+          orderIdRef.current = String(data.orderId);
+          handleReportGeneration(String(data.orderId));
+        }
+      } catch (_) { /* silent retry */ }
+    }, 3000);
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
+
   const handleGetReport = () => {
     setPaymentProcessing(true);
     setPdfError(null);
@@ -354,8 +395,9 @@ export default function ScamCheck() {
       window.LemonSqueezy.Url.Open(checkoutUrl);
     } else {
       window.open(checkoutUrl, "_blank");
-      setPaymentProcessing(false);
     }
+    // Start polling for payment confirmation regardless of overlay method
+    startPaymentPolling();
   };
 
   function downloadPdfFromBase64(base64, filename) {
@@ -853,91 +895,6 @@ export default function ScamCheck() {
                       >
                         {paymentProcessing ? "Processing..." : "Get Full Report \u2014 $3"}
                       </button>
-
-                      {/* Manual order entry fallback */}
-                      {paymentProcessing && !showManualEntry && (
-                        <div style={{ marginTop: "20px" }}>
-                          <button
-                            onClick={() => setShowManualEntry(true)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "rgba(255,255,255,0.4)",
-                              fontFamily: "'DM Sans', sans-serif",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                              textDecoration: "underline",
-                              padding: "4px",
-                            }}
-                          >
-                            Already paid? Click here to enter your order number
-                          </button>
-                        </div>
-                      )}
-                      {showManualEntry && (
-                        <div style={{ marginTop: "20px", textAlign: "center" }}>
-                          <p style={{
-                            fontFamily: "'DM Sans', sans-serif",
-                            fontSize: "12px",
-                            color: "rgba(255,255,255,0.5)",
-                            marginBottom: "12px",
-                            lineHeight: 1.6,
-                          }}>
-                            Enter the order number from your confirmation screen
-                            <br />
-                            (e.g. #3022347)
-                          </p>
-                          <div style={{ display: "flex", gap: "8px", justifyContent: "center", alignItems: "center" }}>
-                            <input
-                              type="text"
-                              placeholder="Order number"
-                              value={manualOrderId}
-                              onChange={(e) => setManualOrderId(e.target.value.replace(/[^0-9]/g, ""))}
-                              style={{
-                                background: "rgba(255,255,255,0.06)",
-                                border: "1px solid rgba(255,255,255,0.12)",
-                                borderRadius: "10px",
-                                padding: "12px 16px",
-                                fontFamily: "'Space Mono', monospace",
-                                fontSize: "14px",
-                                color: "white",
-                                width: "180px",
-                                outline: "none",
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                if (manualOrderId.trim()) {
-                                  setOrderCompleted(true);
-                                  setPaymentProcessing(false);
-                                  setShowManualEntry(false);
-                                  orderIdRef.current = manualOrderId.trim();
-                                  handleReportGeneration(manualOrderId.trim());
-                                }
-                              }}
-                              disabled={!manualOrderId.trim()}
-                              style={{
-                                background: manualOrderId.trim()
-                                  ? "linear-gradient(135deg, #00E5FF, #06b6d4)"
-                                  : "rgba(255,255,255,0.05)",
-                                border: "none",
-                                borderRadius: "10px",
-                                padding: "12px 20px",
-                                fontFamily: "'Space Mono', monospace",
-                                fontSize: "12px",
-                                fontWeight: 700,
-                                color: manualOrderId.trim() ? "#000" : "rgba(255,255,255,0.3)",
-                                cursor: manualOrderId.trim() ? "pointer" : "not-allowed",
-                                textTransform: "uppercase",
-                                letterSpacing: "1px",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              Generate Report
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </>
                   )}
 

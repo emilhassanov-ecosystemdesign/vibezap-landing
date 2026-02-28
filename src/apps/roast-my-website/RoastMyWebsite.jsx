@@ -445,55 +445,57 @@ export default function RoastMyWebsite() {
   const orderIdRef = useRef(null);
   const scannedUrlRef = useRef("");
 
-  // Load LemonSqueezy overlay script
+  // LemonSqueezy event handler ref (stable across renders)
+  const lsHandlerRef = useRef(null);
+  lsHandlerRef.current = (event) => {
+    console.log("[LS Event]", event.event, JSON.stringify(event).slice(0, 500));
+
+    if (event.event === "Checkout.Success") {
+      // Order data is directly in event.data (LemonSqueezy Order object)
+      const orderData = event.data;
+      const oid =
+        orderData?.id ||
+        orderData?.order_number ||
+        orderData?.attributes?.identifier ||
+        orderData?.attributes?.order_number;
+      console.log("[LS] Checkout.Success — orderId:", oid, "full data:", JSON.stringify(orderData).slice(0, 300));
+      setOrderCompleted(true);
+      setPaymentProcessing(false);
+      if (oid) {
+        orderIdRef.current = String(oid);
+        handleReportGeneration(String(oid));
+      } else {
+        console.error("[LS] Could not extract order ID from:", JSON.stringify(event));
+        setPdfError("Payment confirmed but order ID not found. Please contact support.");
+      }
+    }
+    if (event.event === "Checkout.Closed") {
+      setPaymentProcessing(false);
+    }
+  };
+
+  // Load LemonSqueezy overlay script + register event handler
   useEffect(() => {
+    function setupLS() {
+      if (window.LemonSqueezy) {
+        window.LemonSqueezy.Setup({
+          eventHandler: (event) => lsHandlerRef.current?.(event),
+        });
+        console.log("[LS] Setup complete");
+      }
+    }
+
     if (!document.getElementById("lemonsqueezy-js")) {
       const script = document.createElement("script");
       script.id = "lemonsqueezy-js";
       script.src = "https://assets.lemonsqueezy.com/lemon.js";
       script.defer = true;
+      script.onload = () => setupLS();
       document.head.appendChild(script);
+    } else {
+      setupLS();
     }
   }, []);
-
-  // Listen for LemonSqueezy checkout events
-  useEffect(() => {
-    function onMessage(e) {
-      let data;
-      try {
-        data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-      } catch (_) {
-        return; // Not JSON, not a LemonSqueezy event
-      }
-      if (!data?.event) return;
-
-      console.log("[LS Event]", data.event, JSON.stringify(data).slice(0, 500));
-
-      if (data.event === "Checkout.Success") {
-        // Try multiple paths to extract order ID
-        const oid =
-          data?.data?.order?.data?.id ||
-          data?.data?.order?.id ||
-          data?.data?.id ||
-          data?.data?.order?.data?.attributes?.identifier;
-        console.log("[LS] Checkout.Success — orderId:", oid);
-        setOrderCompleted(true);
-        setPaymentProcessing(false);
-        if (oid) {
-          orderIdRef.current = String(oid);
-          handleReportGeneration(String(oid));
-        } else {
-          console.error("[LS] Could not extract order ID from:", JSON.stringify(data));
-          setPdfError("Payment confirmed but order ID not found. Please contact support.");
-        }
-      }
-      if (data.event === "Checkout.Closed" && !orderCompleted) {
-        setPaymentProcessing(false);
-      }
-    }
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [orderCompleted]);
 
   const handleGetReport = () => {
     setPaymentProcessing(true);

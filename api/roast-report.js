@@ -24,6 +24,58 @@ function checkRateLimit(ip) {
   return null;
 }
 
+/**
+ * Extract and parse JSON from Claude's text response.
+ * Tries multiple strategies: direct parse, bracket-counting, greedy regex.
+ */
+function extractJSON(rawText, requiredField) {
+  const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+  // Strategy 1: Direct parse (response is pure JSON)
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed[requiredField] !== undefined) return parsed;
+  } catch (_) {}
+
+  // Strategy 2: Bracket-counted extraction (string-aware)
+  const startIdx = cleaned.indexOf("{");
+  if (startIdx !== -1) {
+    let depth = 0;
+    let endIdx = -1;
+    let inString = false;
+    let escape = false;
+    for (let i = startIdx; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (escape) { escape = false; continue; }
+      if (ch === "\\") { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) { endIdx = i; break; }
+      }
+    }
+    if (endIdx !== -1) {
+      try {
+        const parsed = JSON.parse(cleaned.substring(startIdx, endIdx + 1));
+        if (parsed[requiredField] !== undefined) return parsed;
+      } catch (_) {}
+    }
+  }
+
+  // Strategy 3: Greedy regex fallback
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0].replace(/```json|```/g, "").trim());
+      if (parsed[requiredField] !== undefined) return parsed;
+    } catch (_) {}
+  }
+
+  return null;
+}
+
 const ENHANCED_PROMPT = `You are a brutally honest website critic — think Gordon Ramsay reviewing websites. You have a sharp sense of humor but you're also deeply knowledgeable about web design, UX, copywriting, performance, and trust signals. This is a PAID premium report, so be thorough and provide extraordinary detail.
 
 Visit and analyze this website: URL_PLACEHOLDER
@@ -105,57 +157,89 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Enhanced Claude analysis with web_search
     const prompt = ENHANCED_PROMPT.replace("URL_PLACEHOLDER", url);
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    let parsed = null;
+    const MAX_ATTEMPTS = 2;
 
-    const data = await response.json();
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      console.log(`[roast-report] Attempt ${attempt}`, { url, orderId });
 
-    if (data.error) {
-      console.error("Claude API error:", data.error);
-      const msg = data.error.message || "";
-      if (msg.toLowerCase().includes("rate limit")) {
-        return res.status(429).json({
-          error: "Our AI is taking a breather. Please try again in about a minute.",
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 16000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      const data = await response.json();
+
+      // API-level errors: return immediately, no retry
+      if (data.error) {
+        console.error("[roast-report] Claude API error:", data.error);
+        const msg = data.error.message || "";
+        if (msg.toLowerCase().includes("rate limit")) {
+          return res.status(429).json({
+            error: "Our AI is taking a breather. Please try again in about a minute.",
+          });
+        }
+        return res.status(502).json({
+          error: "Analysis service temporarily unavailable. Please try again.",
         });
       }
-      return res
-        .status(502)
-        .json({ error: "Analysis service temporarily unavailable. Please try again." });
+
+      console.log(`[roast-report] Response (attempt ${attempt})`, {
+        stop_reason: data.stop_reason,
+        input_tokens: data.usage?.input_tokens,
+        output_tokens: data.usage?.output_tokens,
+        content_blocks: data.content?.length,
+      });
+
+      if (!data.content?.length) {
+        console.error(`[roast-report] Empty response (attempt ${attempt})`);
+        if (attempt < MAX_ATTEMPTS) continue;
+        return res.status(502).json({ error: "Empty response from analysis" });
+      }
+
+      if (data.stop_reason === "max_tokens") {
+        console.warn(`[roast-report] Response truncated (attempt ${attempt})`);
+      }
+
+      const textContent = data.content
+        .filter((item) => item.type === "text")
+        .map((item) => item.text)
+        .join("\n");
+
+      parsed = extractJSON(textContent, "overall_score");
+
+      if (parsed && parsed.categories) {
+        console.log(`[roast-report] Parse success (attempt ${attempt})`, {
+          overall_score: parsed.overall_score,
+          fixes_count: parsed.specific_fixes?.length,
+        });
+        break;
+      }
+
+      console.error(`[roast-report] JSON extraction failed (attempt ${attempt})`, {
+        stop_reason: data.stop_reason,
+        output_tokens: data.usage?.output_tokens,
+        textLength: textContent.length,
+        preview: textContent.substring(0, 500),
+        tail: textContent.substring(Math.max(0, textContent.length - 300)),
+      });
     }
 
-    if (!data.content?.length) {
-      return res.status(502).json({ error: "Empty response from analysis" });
-    }
-
-    const textContent = data.content
-      .filter((item) => item.type === "text")
-      .map((item) => item.text)
-      .join("\n");
-
-    const jsonMatch = textContent.match(/\{[\s\S]*"overall_score"[\s\S]*\}/);
-    if (!jsonMatch) {
-      return res.status(502).json({ error: "Could not parse analysis" });
-    }
-
-    const cleaned = jsonMatch[0].replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (!parsed.overall_score || !parsed.categories) {
-      return res.status(502).json({ error: "Incomplete analysis data" });
+    if (!parsed || !parsed.categories) {
+      return res.status(502).json({
+        error: "Analysis incomplete — please tap 'Try Again'. If the problem persists, contact support@vibezap.dev.",
+      });
     }
 
     const generatedAt = new Date().toISOString();

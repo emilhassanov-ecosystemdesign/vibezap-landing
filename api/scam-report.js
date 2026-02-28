@@ -24,6 +24,58 @@ function checkRateLimit(ip) {
   return null;
 }
 
+/**
+ * Extract and parse JSON from Claude's text response.
+ * Tries multiple strategies: direct parse, bracket-counting, greedy regex.
+ */
+function extractJSON(rawText, requiredField) {
+  const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+  // Strategy 1: Direct parse (response is pure JSON)
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed[requiredField] !== undefined) return parsed;
+  } catch (_) {}
+
+  // Strategy 2: Bracket-counted extraction (string-aware)
+  const startIdx = cleaned.indexOf("{");
+  if (startIdx !== -1) {
+    let depth = 0;
+    let endIdx = -1;
+    let inString = false;
+    let escape = false;
+    for (let i = startIdx; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (escape) { escape = false; continue; }
+      if (ch === "\\") { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) { endIdx = i; break; }
+      }
+    }
+    if (endIdx !== -1) {
+      try {
+        const parsed = JSON.parse(cleaned.substring(startIdx, endIdx + 1));
+        if (parsed[requiredField] !== undefined) return parsed;
+      } catch (_) {}
+    }
+  }
+
+  // Strategy 3: Greedy regex fallback
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0].replace(/```json|```/g, "").trim());
+      if (parsed[requiredField] !== undefined) return parsed;
+    } catch (_) {}
+  }
+
+  return null;
+}
+
 const ENHANCED_PROMPT = `You are an expert scam forensic analyst preparing a professional paid report. Analyze the following message in deep detail.
 
 Here is the message to analyze:
@@ -112,56 +164,88 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Enhanced Claude analysis
     const prompt = ENHANCED_PROMPT.replace("MESSAGE_PLACEHOLDER", message);
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": anthropicKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    let parsed = null;
+    const MAX_ATTEMPTS = 2;
 
-    const data = await response.json();
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      console.log(`[scam-report] Attempt ${attempt}`, { orderId });
 
-    if (data.error) {
-      console.error("Claude API error:", data.error);
-      const msg = data.error.message || "";
-      if (msg.toLowerCase().includes("rate limit")) {
-        return res.status(429).json({
-          error: "Our AI is taking a breather. Please try again in about a minute.",
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 8000,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      const data = await response.json();
+
+      // API-level errors: return immediately, no retry
+      if (data.error) {
+        console.error("[scam-report] Claude API error:", data.error);
+        const msg = data.error.message || "";
+        if (msg.toLowerCase().includes("rate limit")) {
+          return res.status(429).json({
+            error: "Our AI is taking a breather. Please try again in about a minute.",
+          });
+        }
+        return res.status(502).json({
+          error: "Analysis service temporarily unavailable. Please try again.",
         });
       }
-      return res
-        .status(502)
-        .json({ error: "Analysis service temporarily unavailable. Please try again." });
+
+      console.log(`[scam-report] Response (attempt ${attempt})`, {
+        stop_reason: data.stop_reason,
+        input_tokens: data.usage?.input_tokens,
+        output_tokens: data.usage?.output_tokens,
+        content_blocks: data.content?.length,
+      });
+
+      if (!data.content?.length) {
+        console.error(`[scam-report] Empty response (attempt ${attempt})`);
+        if (attempt < MAX_ATTEMPTS) continue;
+        return res.status(502).json({ error: "Empty response from analysis" });
+      }
+
+      if (data.stop_reason === "max_tokens") {
+        console.warn(`[scam-report] Response truncated (attempt ${attempt})`);
+      }
+
+      const textContent = data.content
+        .filter((item) => item.type === "text")
+        .map((item) => item.text)
+        .join("\n");
+
+      parsed = extractJSON(textContent, "risk_score");
+
+      if (parsed && parsed.categories) {
+        console.log(`[scam-report] Parse success (attempt ${attempt})`, {
+          risk_score: parsed.risk_score,
+          verdict: parsed.verdict,
+        });
+        break;
+      }
+
+      console.error(`[scam-report] JSON extraction failed (attempt ${attempt})`, {
+        stop_reason: data.stop_reason,
+        output_tokens: data.usage?.output_tokens,
+        textLength: textContent.length,
+        preview: textContent.substring(0, 500),
+        tail: textContent.substring(Math.max(0, textContent.length - 300)),
+      });
     }
 
-    if (!data.content?.length) {
-      return res.status(502).json({ error: "Empty response from analysis" });
-    }
-
-    const textContent = data.content
-      .filter((item) => item.type === "text")
-      .map((item) => item.text)
-      .join("\n");
-
-    const jsonMatch = textContent.match(/\{[\s\S]*"risk_score"[\s\S]*\}/);
-    if (!jsonMatch) {
-      return res.status(502).json({ error: "Could not parse analysis" });
-    }
-
-    const cleaned = jsonMatch[0].replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (!parsed.risk_score || !parsed.categories) {
-      return res.status(502).json({ error: "Incomplete analysis data" });
+    if (!parsed || !parsed.categories) {
+      return res.status(502).json({
+        error: "Analysis incomplete — please tap 'Try Again'. If the problem persists, contact support@vibezap.dev.",
+      });
     }
 
     const generatedAt = new Date().toISOString();

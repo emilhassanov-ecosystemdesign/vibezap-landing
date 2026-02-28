@@ -7,10 +7,10 @@
   ],
   "functions": {
     "api/scam-report.js": {
-      "maxDuration": 15
+      "maxDuration": 30
     },
     "api/roast-report.js": {
-      "maxDuration": 30
+      "maxDuration": 60
     }
   }
 }

@@ -23,22 +23,31 @@ export default async function handler(req, res) {
   }
 
   const expectedTotal = product === "roast" ? 500 : 300;
-  const afterTime = after ? new Date(after).getTime() : Date.now() - 10 * 60 * 1000;
+  // Add 30-second buffer to handle clock skew between our server and LS
+  const afterTime = after
+    ? new Date(after).getTime() - 30000
+    : Date.now() - 10 * 60 * 1000;
 
   try {
     // Fetch most recent orders from LemonSqueezy
-    const response = await fetch(
-      "https://api.lemonsqueezy.com/v1/orders?sort=-created_at&page[size]=10",
-      {
-        headers: {
-          Authorization: `Bearer ${lsApiKey}`,
-          Accept: "application/vnd.api+json",
-        },
-      }
-    );
+    // Use URL-encoded brackets for JSON:API pagination
+    const url = new URL("https://api.lemonsqueezy.com/v1/orders");
+    url.searchParams.set("sort", "-created_at");
+    url.searchParams.set("page[size]", "10");
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${lsApiKey}`,
+        Accept: "application/vnd.api+json",
+      },
+    });
 
     if (!response.ok) {
-      return res.status(502).json({ error: "Failed to query payment provider" });
+      const errBody = await response.text().catch(() => "");
+      console.error("LS API error:", response.status, errBody);
+      return res
+        .status(502)
+        .json({ error: "Failed to query payment provider", status: response.status });
     }
 
     const data = await response.json();

@@ -23,24 +23,24 @@ export default async function handler(req, res) {
   }
 
   const expectedTotal = product === "roast" ? 500 : 300;
-  // Add 30-second buffer to handle clock skew between our server and LS
+  // Add 30-second buffer to handle clock skew
   const afterTime = after
     ? new Date(after).getTime() - 30000
     : Date.now() - 10 * 60 * 1000;
 
   try {
     // Fetch most recent orders from LemonSqueezy
-    // Use URL-encoded brackets for JSON:API pagination
-    const url = new URL("https://api.lemonsqueezy.com/v1/orders");
-    url.searchParams.set("sort", "-created_at");
-    url.searchParams.set("page[size]", "10");
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${lsApiKey}`,
-        Accept: "application/vnd.api+json",
-      },
-    });
+    // Default sort is created_at descending (newest first)
+    const response = await fetch(
+      "https://api.lemonsqueezy.com/v1/orders",
+      {
+        headers: {
+          Authorization: `Bearer ${lsApiKey}`,
+          Accept: "application/vnd.api+json",
+          "Content-Type": "application/vnd.api+json",
+        },
+      }
+    );
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => "");

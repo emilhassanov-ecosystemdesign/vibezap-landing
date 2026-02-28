@@ -26,6 +26,52 @@ function checkRateLimit(ip) {
   return null;
 }
 
+/**
+ * Extract and parse JSON from Claude's text response.
+ * Tries multiple strategies: direct parse, bracket-counting, greedy regex.
+ */
+function extractJSON(rawText, requiredField) {
+  const cleaned = rawText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+
+  // Strategy 1: Direct parse
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (parsed[requiredField] !== undefined) return parsed;
+  } catch (_) {}
+
+  // Strategy 2: Bracket-counted extraction (string-aware)
+  const startIdx = cleaned.indexOf("{");
+  if (startIdx !== -1) {
+    let depth = 0, endIdx = -1, inString = false, escape = false;
+    for (let i = startIdx; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (escape) { escape = false; continue; }
+      if (ch === "\\") { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+    }
+    if (endIdx !== -1) {
+      try {
+        const parsed = JSON.parse(cleaned.substring(startIdx, endIdx + 1));
+        if (parsed[requiredField] !== undefined) return parsed;
+      } catch (_) {}
+    }
+  }
+
+  // Strategy 3: Greedy regex fallback
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0].replace(/```json|```/g, "").trim());
+      if (parsed[requiredField] !== undefined) return parsed;
+    } catch (_) {}
+  }
+
+  return null;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -61,7 +107,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
+        max_tokens: 4000,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [
           {
@@ -112,16 +158,14 @@ Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quot
       .map((item) => item.text)
       .join("\n");
 
-    const jsonMatch = textContent.match(/\{[\s\S]*"overall_score"[\s\S]*\}/);
-    if (!jsonMatch) {
-      return res.status(502).json({ error: "No valid roast data in response" });
-    }
+    const parsed = extractJSON(textContent, "overall_score");
 
-    const cleaned = jsonMatch[0].replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (!parsed.overall_score || !parsed.categories) {
-      return res.status(502).json({ error: "Incomplete roast data" });
+    if (!parsed || !parsed.categories) {
+      console.error("[roast] JSON extraction failed", {
+        textLength: textContent.length,
+        preview: textContent.substring(0, 500),
+      });
+      return res.status(502).json({ error: "Could not parse the roast. Please try again." });
     }
 
     return res.status(200).json(parsed);

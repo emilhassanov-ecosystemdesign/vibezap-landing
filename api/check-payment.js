@@ -31,16 +31,17 @@ export default async function handler(req, res) {
   try {
     // Fetch most recent orders from LemonSqueezy
     // Default sort is created_at descending (newest first)
-    const response = await fetch(
-      "https://api.lemonsqueezy.com/v1/orders",
-      {
-        headers: {
-          Authorization: `Bearer ${lsApiKey}`,
-          Accept: "application/vnd.api+json",
-          "Content-Type": "application/vnd.api+json",
-        },
-      }
-    );
+    // Filter by store to avoid permission issues; no Content-Type on GET
+    const lsUrl = new URL("https://api.lemonsqueezy.com/v1/orders");
+    lsUrl.searchParams.set("filter[store_id]", "302234");
+    lsUrl.searchParams.set("page[size]", "10");
+
+    const response = await fetch(lsUrl.toString(), {
+      headers: {
+        Authorization: `Bearer ${lsApiKey}`,
+        Accept: "application/vnd.api+json",
+      },
+    });
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => "");

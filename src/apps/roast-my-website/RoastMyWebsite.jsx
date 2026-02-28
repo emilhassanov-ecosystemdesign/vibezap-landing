@@ -453,25 +453,30 @@ export default function RoastMyWebsite() {
     console.log("[LS Event]", event.event, JSON.stringify(event).slice(0, 500));
 
     if (event.event === "Checkout.Success") {
-      stopPolling(); // LS event fired — stop polling
       if (window.LemonSqueezy?.Url?.Close) {
         window.LemonSqueezy.Url.Close();
       }
+      // LS nests order data: event.data.order.data.{id, attributes}
+      const nested = event.data?.order?.data;
       const orderData = event.data;
       const oid =
+        nested?.id ||
+        nested?.attributes?.order_number ||
+        nested?.attributes?.identifier ||
         orderData?.id ||
         orderData?.order_number ||
         orderData?.attributes?.identifier ||
         orderData?.attributes?.order_number;
       console.log("[LS] Checkout.Success — orderId:", oid);
-      setOrderCompleted(true);
-      setPaymentProcessing(false);
       if (oid) {
+        stopPolling();
+        setOrderCompleted(true);
+        setPaymentProcessing(false);
         orderIdRef.current = String(oid);
         handleReportGeneration(String(oid));
       } else {
-        console.error("[LS] Could not extract order ID from:", JSON.stringify(event));
-        setPdfError("Payment confirmed but order ID not found. Please contact support.");
+        // Don't stop polling — let it find the order ID as fallback
+        console.warn("[LS] Could not extract order ID, polling will continue. Event:", JSON.stringify(event).slice(0, 1000));
       }
     }
     if (event.event === "Checkout.Closed") {

@@ -295,6 +295,9 @@ export default function ScamCheck() {
 
     if (event.event === "Checkout.Success") {
       stopPolling(); // LS event fired — stop polling
+      if (window.LemonSqueezy?.Url?.Close) {
+        window.LemonSqueezy.Url.Close();
+      }
       const orderData = event.data;
       const oid =
         orderData?.id ||
@@ -372,6 +375,10 @@ export default function ScamCheck() {
         const data = await resp.json();
         if (data.found && data.orderId) {
           stopPolling();
+          // Close the LemonSqueezy overlay so customer sees the report
+          if (window.LemonSqueezy?.Url?.Close) {
+            window.LemonSqueezy.Url.Close();
+          }
           setOrderCompleted(true);
           setPaymentProcessing(false);
           orderIdRef.current = String(data.orderId);

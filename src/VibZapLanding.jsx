@@ -290,7 +290,7 @@ export default function VibZapLanding() {
       icon: "\uD83D\uDEE1\uFE0F",
       title: "Am I Being Scammed?",
       description: "Paste any suspicious email, text, or DM. Get an instant scam probability score with red flags and recommended actions.",
-      price: "Free",
+      price: "Free / $3 full report",
       tag: "Live",
       tagColor: "#4ade80",
       link: "/scam-check",

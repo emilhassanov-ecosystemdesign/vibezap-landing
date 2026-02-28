@@ -71,7 +71,7 @@ vibezap-landing/
 | # | Tool | Route | API | Status | Price |
 |---|------|-------|-----|--------|-------|
 | 1 | Roast My Website | `/roast` | `/api/roast` | **Live** | Free / $5 full report |
-| 2 | Am I Being Scammed? | `/scam-check` | `/api/scam-check` | **Live** | Free |
+| 2 | Am I Being Scammed? | `/scam-check` | `/api/scam-check` | **Live** | Free / $3 full report |
 | 3 | Screenshot → Mockup | `/mockup` | — | Planned | $3 |
 | 4 | TLDR Contract | `/tldr-contract` | — | Planned | $3 |
 | 5 | 365 Social Posts | `/social-posts` | — | Planned | $15 |

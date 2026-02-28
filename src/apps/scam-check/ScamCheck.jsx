@@ -490,7 +490,7 @@ export default function ScamCheck() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Something went wrong");
+        throw new Error(data.error || "Something went wrong. Please try again.");
       }
 
       setResult(data);
@@ -500,7 +500,7 @@ export default function ScamCheck() {
       }, 300);
     } catch (err) {
       console.error(err);
-      setError(err.message || "Something went wrong analyzing that message. Please try again.");
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

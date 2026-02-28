@@ -650,7 +650,7 @@ export default function RoastMyWebsite() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Something went wrong");
+        throw new Error(data.error || "Something went wrong. Please try again.");
       }
 
       setResult(data);
@@ -660,9 +660,7 @@ export default function RoastMyWebsite() {
       }, 300);
     } catch (err) {
       console.error(err);
-      setError(
-        "The roast got too hot and broke something. Try again \u2014 even Gordon Ramsay has off days."
-      );
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -93,7 +93,13 @@ Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quot
     const data = await response.json();
 
     if (data.error) {
-      return res.status(502).json({ error: data.error.message || "Anthropic API error" });
+      const msg = data.error.message || "";
+      if (msg.toLowerCase().includes("rate limit")) {
+        return res.status(429).json({
+          error: "Our AI is taking a breather. Please try again in about a minute.",
+        });
+      }
+      return res.status(502).json({ error: "Analysis service temporarily unavailable. Please try again." });
     }
 
     if (!data.content || data.content.length === 0) {

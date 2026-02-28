@@ -132,9 +132,15 @@ export default async function handler(req, res) {
 
     if (data.error) {
       console.error("Claude API error:", data.error);
+      const msg = data.error.message || "";
+      if (msg.toLowerCase().includes("rate limit")) {
+        return res.status(429).json({
+          error: "Our AI is taking a breather. Please try again in about a minute.",
+        });
+      }
       return res
         .status(502)
-        .json({ error: "Analysis service error. Please try again." });
+        .json({ error: "Analysis service temporarily unavailable. Please try again." });
     }
 
     if (!data.content?.length) {

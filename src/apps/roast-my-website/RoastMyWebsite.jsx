@@ -440,6 +440,8 @@ export default function RoastMyWebsite() {
   const [reportData, setReportData] = useState(null);
   const [emailStatus, setEmailStatus] = useState(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [manualOrderId, setManualOrderId] = useState("");
+  const [showManualEntry, setShowManualEntry] = useState(false);
   const resultRef = useRef(null);
   const reportRef = useRef(null);
   const orderIdRef = useRef(null);
@@ -1093,6 +1095,91 @@ export default function RoastMyWebsite() {
                       >
                         {paymentProcessing ? "Processing..." : "Get Full Report \u2014 $5"}
                       </button>
+
+                      {/* Manual order entry fallback */}
+                      {paymentProcessing && !showManualEntry && (
+                        <div style={{ marginTop: "20px" }}>
+                          <button
+                            onClick={() => setShowManualEntry(true)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "rgba(255,255,255,0.4)",
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                              padding: "4px",
+                            }}
+                          >
+                            Already paid? Click here to enter your order number
+                          </button>
+                        </div>
+                      )}
+                      {showManualEntry && (
+                        <div style={{ marginTop: "20px", textAlign: "center" }}>
+                          <p style={{
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.5)",
+                            marginBottom: "12px",
+                            lineHeight: 1.6,
+                          }}>
+                            Enter the order number from your confirmation screen
+                            <br />
+                            (e.g. #3022347)
+                          </p>
+                          <div style={{ display: "flex", gap: "8px", justifyContent: "center", alignItems: "center" }}>
+                            <input
+                              type="text"
+                              placeholder="Order number"
+                              value={manualOrderId}
+                              onChange={(e) => setManualOrderId(e.target.value.replace(/[^0-9]/g, ""))}
+                              style={{
+                                background: "rgba(255,255,255,0.06)",
+                                border: "1px solid rgba(255,255,255,0.12)",
+                                borderRadius: "10px",
+                                padding: "12px 16px",
+                                fontFamily: "'Space Mono', monospace",
+                                fontSize: "14px",
+                                color: "white",
+                                width: "180px",
+                                outline: "none",
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                if (manualOrderId.trim()) {
+                                  setOrderCompleted(true);
+                                  setPaymentProcessing(false);
+                                  setShowManualEntry(false);
+                                  orderIdRef.current = manualOrderId.trim();
+                                  handleReportGeneration(manualOrderId.trim());
+                                }
+                              }}
+                              disabled={!manualOrderId.trim()}
+                              style={{
+                                background: manualOrderId.trim()
+                                  ? "linear-gradient(135deg, #ff2d55, #ff6b35)"
+                                  : "rgba(255,255,255,0.05)",
+                                border: "none",
+                                borderRadius: "10px",
+                                padding: "12px 20px",
+                                fontFamily: "'Space Mono', monospace",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                color: manualOrderId.trim() ? "white" : "rgba(255,255,255,0.3)",
+                                cursor: manualOrderId.trim() ? "pointer" : "not-allowed",
+                                textTransform: "uppercase",
+                                letterSpacing: "1px",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              Generate Report
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 

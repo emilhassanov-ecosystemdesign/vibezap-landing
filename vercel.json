@@ -8,6 +8,9 @@
   "functions": {
     "api/scam-report.js": {
       "maxDuration": 10
+    },
+    "api/roast-report.js": {
+      "maxDuration": 30
     }
   }
 }

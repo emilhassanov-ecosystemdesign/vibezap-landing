@@ -284,7 +284,100 @@ export default function RoastMyWebsite() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [orderCompleted, setOrderCompleted] = useState(false);
   const resultRef = useRef(null);
+  const orderIdRef = useRef(null);
+  const scannedUrlRef = useRef("");
+
+  // Load LemonSqueezy overlay script
+  useEffect(() => {
+    if (!document.getElementById("lemonsqueezy-js")) {
+      const script = document.createElement("script");
+      script.id = "lemonsqueezy-js";
+      script.src = "https://assets.lemonsqueezy.com/lemon.js";
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }, []);
+
+  // Listen for LemonSqueezy checkout events
+  useEffect(() => {
+    function onMessage(e) {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (data?.event === "Checkout.Success") {
+          const oid =
+            data?.data?.order?.data?.id ||
+            data?.data?.order?.id ||
+            data?.data?.id;
+          setOrderCompleted(true);
+          setPaymentProcessing(false);
+          if (oid) {
+            orderIdRef.current = String(oid);
+            handleReportGeneration(String(oid));
+          }
+        }
+        if (data?.event === "Checkout.Closed" && !orderCompleted) {
+          setPaymentProcessing(false);
+        }
+      } catch (_) {
+        // Not a LemonSqueezy event
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [orderCompleted]);
+
+  const handleGetReport = () => {
+    setPaymentProcessing(true);
+    setPdfError(null);
+    const checkoutUrl =
+      "https://vibezap.lemonsqueezy.com/checkout/buy/0c4823fd-0f0d-42bc-8362-b272910b8a55?embed=1";
+    if (window.LemonSqueezy) {
+      window.LemonSqueezy.Url.Open(checkoutUrl);
+    } else {
+      window.open(checkoutUrl, "_blank");
+      setPaymentProcessing(false);
+    }
+  };
+
+  const handleReportGeneration = async (oid) => {
+    setPdfGenerating(true);
+    setPdfError(null);
+    try {
+      const response = await fetch("/api/roast-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: scannedUrlRef.current,
+          orderId: oid,
+        }),
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to generate report");
+      }
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = "website-roast-report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      setPdfDownloaded(true);
+    } catch (err) {
+      console.error("Report generation error:", err);
+      setPdfError(err.message || "Something went wrong generating your report.");
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
 
   const roastWebsite = async () => {
     if (!url.trim()) return;
@@ -292,10 +385,17 @@ export default function RoastMyWebsite() {
     let cleanUrl = url.trim();
     if (!cleanUrl.startsWith("http")) cleanUrl = "https://" + cleanUrl;
 
+    scannedUrlRef.current = cleanUrl;
     setLoading(true);
     setError(null);
     setResult(null);
     setShowDetails(false);
+    setPaymentProcessing(false);
+    setPdfGenerating(false);
+    setPdfError(null);
+    setPdfDownloaded(false);
+    setOrderCompleted(false);
+    orderIdRef.current = null;
 
     try {
       const response = await fetch("/api/roast", {
@@ -722,52 +822,228 @@ export default function RoastMyWebsite() {
                     animation: "slideUp 0.6s ease",
                   }}
                 >
-                  <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
-                  <h3
-                    style={{
-                      fontFamily: "'Playfair Display', serif",
-                      fontSize: "20px",
-                      fontWeight: 700,
-                      marginBottom: "8px",
-                    }}
-                  >
-                    Want the Full Report?
-                  </h3>
-                  <p
-                    style={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: "13px",
-                      color: "rgba(255,255,255,0.45)",
-                      marginBottom: "20px",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Get a detailed PDF with 30+ specific fixes,
-                    <br />
-                    priority rankings, and competitor comparisons.
-                  </p>
-                  <a
-                    href="https://vibezap.lemonsqueezy.com/checkout/buy/0c4823fd-0f0d-42bc-8362-b272910b8a55"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "inline-block",
-                      background: "linear-gradient(135deg, #ff2d55, #ff6b35)",
-                      border: "none",
-                      borderRadius: "12px",
-                      padding: "14px 32px",
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      color: "white",
-                      cursor: "pointer",
-                      textTransform: "uppercase",
-                      letterSpacing: "2px",
-                      textDecoration: "none",
-                    }}
-                  >
-                    Get Full Report &mdash; $5
-                  </a>
+                  {/* Pre-purchase state */}
+                  {!orderCompleted && !pdfGenerating && !pdfDownloaded && (
+                    <>
+                      <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
+                      <h3
+                        style={{
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: "20px",
+                          fontWeight: 700,
+                          marginBottom: "8px",
+                        }}
+                      >
+                        Want the Full Report?
+                      </h3>
+                      <p
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.45)",
+                          marginBottom: "12px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Get a detailed PDF with 30+ specific fixes,
+                        <br />
+                        priority rankings, and competitor comparisons.
+                      </p>
+                      <div
+                        style={{
+                          textAlign: "left",
+                          maxWidth: "320px",
+                          margin: "0 auto 20px",
+                        }}
+                      >
+                        {[
+                          "30+ specific fixes with priority levels",
+                          "Detailed analysis per category",
+                          "Quick wins you can do today",
+                          "Competitor insights & comparisons",
+                          "SEO, accessibility & mobile notes",
+                        ].map((item, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: "flex",
+                              gap: "8px",
+                              marginBottom: "6px",
+                              fontFamily: "'DM Sans', sans-serif",
+                              fontSize: "12px",
+                              color: "rgba(255,255,255,0.5)",
+                            }}
+                          >
+                            <span style={{ color: "#ff6b35", flexShrink: 0 }}>{"\u2713"}</span>
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleGetReport}
+                        disabled={paymentProcessing}
+                        style={{
+                          display: "inline-block",
+                          background: paymentProcessing
+                            ? "rgba(255,255,255,0.05)"
+                            : "linear-gradient(135deg, #ff2d55, #ff6b35)",
+                          border: "none",
+                          borderRadius: "12px",
+                          padding: "14px 32px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "13px",
+                          fontWeight: 700,
+                          color: paymentProcessing ? "rgba(255,255,255,0.3)" : "white",
+                          cursor: paymentProcessing ? "not-allowed" : "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "2px",
+                        }}
+                      >
+                        {paymentProcessing ? "Processing..." : "Get Full Report \u2014 $5"}
+                      </button>
+                    </>
+                  )}
+
+                  {/* Generating PDF state */}
+                  {pdfGenerating && (
+                    <>
+                      <div
+                        style={{
+                          fontSize: "48px",
+                          marginBottom: "16px",
+                          animation: "pulse 1.5s ease-in-out infinite",
+                        }}
+                      >
+                        {"\uD83D\uDCDD"}
+                      </div>
+                      <h3
+                        style={{
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: "18px",
+                          fontWeight: 700,
+                          marginBottom: "8px",
+                        }}
+                      >
+                        Generating Your Roast Report...
+                      </h3>
+                      <p
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.45)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Running deep analysis and building your PDF.
+                        <br />
+                        This usually takes 15-30 seconds.
+                      </p>
+                      <div
+                        style={{
+                          width: "200px",
+                          height: "2px",
+                          background: "rgba(255,255,255,0.1)",
+                          margin: "20px auto",
+                          borderRadius: "1px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "40%",
+                            height: "100%",
+                            background: "linear-gradient(90deg, #ff2d55, #ff6b35)",
+                            borderRadius: "1px",
+                            animation: "loading 1.5s ease-in-out infinite",
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* PDF Downloaded state */}
+                  {pdfDownloaded && !pdfGenerating && (
+                    <>
+                      <div style={{ fontSize: "48px", marginBottom: "16px" }}>{"\u2705"}</div>
+                      <h3
+                        style={{
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: "18px",
+                          fontWeight: 700,
+                          marginBottom: "8px",
+                        }}
+                      >
+                        Report Downloaded!
+                      </h3>
+                      <p
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.45)",
+                          marginBottom: "16px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        Your full roast report has been saved as a PDF.
+                      </p>
+                      <button
+                        onClick={() => handleReportGeneration(orderIdRef.current)}
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "12px",
+                          padding: "12px 24px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: "rgba(255,255,255,0.6)",
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        Download Again
+                      </button>
+                    </>
+                  )}
+
+                  {/* Error state */}
+                  {pdfError && !pdfGenerating && (
+                    <div style={{ marginTop: pdfDownloaded ? "16px" : 0 }}>
+                      <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\u26A0\uFE0F"}</div>
+                      <p
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(239,68,68,0.8)",
+                          marginBottom: "16px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {pdfError}
+                      </p>
+                      {orderIdRef.current && (
+                        <button
+                          onClick={() => handleReportGeneration(orderIdRef.current)}
+                          style={{
+                            background: "linear-gradient(135deg, #ff2d55, #ff6b35)",
+                            border: "none",
+                            borderRadius: "12px",
+                            padding: "12px 24px",
+                            fontFamily: "'Space Mono', monospace",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: "white",
+                            cursor: "pointer",
+                            textTransform: "uppercase",
+                            letterSpacing: "1px",
+                          }}
+                        >
+                          Try Again
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

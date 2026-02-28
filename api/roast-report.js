@@ -1,0 +1,202 @@
+import generateRoastPdf from "./lib/generate-roast-pdf.js";
+
+// In-memory rate limiting
+const rateLimit = new Map();
+const MAX_REQUESTS = 10;
+const WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  for (const [key, entry] of rateLimit) {
+    if (now > entry.resetTime) rateLimit.delete(key);
+  }
+  const entry = rateLimit.get(ip);
+  if (!entry || now > entry.resetTime) {
+    rateLimit.set(ip, { count: 1, resetTime: now + WINDOW_MS });
+    return null;
+  }
+  if (entry.count >= MAX_REQUESTS) {
+    return Math.ceil((entry.resetTime - now) / 60000);
+  }
+  entry.count++;
+  return null;
+}
+
+async function verifyOrder(orderId, apiKey) {
+  const response = await fetch(
+    `https://api.lemonsqueezy.com/v1/orders/${orderId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/vnd.api+json",
+      },
+    }
+  );
+
+  if (!response.ok) return { valid: false, reason: "Order not found" };
+
+  const data = await response.json();
+  const attrs = data?.data?.attributes;
+  if (!attrs) return { valid: false, reason: "Invalid order data" };
+
+  if (attrs.status !== "paid") {
+    return { valid: false, reason: "Order not paid" };
+  }
+
+  // Verify it's a $5 order (total is in cents)
+  if (attrs.total !== 500) {
+    return { valid: false, reason: "Order amount mismatch" };
+  }
+
+  return { valid: true };
+}
+
+const ENHANCED_PROMPT = `You are a brutally honest website critic — think Gordon Ramsay reviewing websites. You have a sharp sense of humor but you're also deeply knowledgeable about web design, UX, copywriting, performance, and trust signals. This is a PAID premium report, so be thorough and provide extraordinary detail.
+
+Visit and analyze this website: URL_PLACEHOLDER
+
+Return ONLY a JSON object (no markdown, no backticks, no preamble) with this exact structure:
+{
+  "overall_score": <number 1-10>,
+  "roast_headline": "<a short, savage, funny one-liner roast>",
+  "roast_summary": "<2-3 sentences of brutally honest but constructive summary>",
+  "severity": "<one of: brutal, harsh, mild, decent, fire>",
+  "executive_summary": "<2-3 detailed paragraphs analyzing the website thoroughly — cover first impressions, overall strategy, and the biggest opportunities. Maintain the Gordon Ramsay roasting tone but be genuinely insightful and actionable>",
+  "categories": {
+    "Design": { "score": <1-10>, "comment": "<one funny roast line>", "detailed_analysis": "<2-3 sentences with specific observations about layout, colors, typography, visual hierarchy, whitespace, and overall aesthetics>" },
+    "Copy": { "score": <1-10>, "comment": "<one funny roast line>", "detailed_analysis": "<2-3 sentences about headline clarity, value proposition, CTAs, tone of voice, and persuasion techniques>" },
+    "UX": { "score": <1-10>, "comment": "<one funny roast line>", "detailed_analysis": "<2-3 sentences about navigation, information architecture, mobile experience, forms, and user flow>" },
+    "Performance": { "score": <1-10>, "comment": "<one funny roast line>", "detailed_analysis": "<2-3 sentences about load time perception, image optimization, render-blocking resources, and technical debt signals>" },
+    "Trust": { "score": <1-10>, "comment": "<one funny roast line>", "detailed_analysis": "<2-3 sentences about social proof, testimonials, security indicators, branding consistency, and credibility signals>" }
+  },
+  "specific_fixes": [
+    { "title": "<short fix name>", "description": "<1-2 sentences explaining what to do and why>", "priority": "<high|medium|low>", "category": "<Design|Copy|UX|Performance|Trust>" }
+  ],
+  "quick_wins": ["<easy fix 1>", "<easy fix 2>", "<easy fix 3>", "<easy fix 4>", "<easy fix 5>"],
+  "competitor_insights": [
+    { "suggestion": "<what competitors do better>", "example": "<specific example or reference>" }
+  ],
+  "seo_notes": "<paragraph about SEO observations — meta tags, heading structure, content quality, internal linking>",
+  "accessibility_notes": "<paragraph about accessibility — contrast, alt text, keyboard nav, ARIA labels>",
+  "mobile_notes": "<paragraph about mobile experience — responsive design, touch targets, mobile-specific issues>"
+}
+
+IMPORTANT:
+- "specific_fixes" must contain AT LEAST 30 items, spread across all 5 categories and all 3 priority levels
+- "competitor_insights" should have exactly 3 items
+- Be savage but fair. Every observation must be specific to THIS website, not generic advice
+- Make every roast line quotable and funny
+- Respond with ONLY the JSON`;
+
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // Rate limit
+  const ip = (req.headers["x-forwarded-for"] || "unknown").split(",")[0].trim();
+  const retryAfter = checkRateLimit(ip);
+  if (retryAfter !== null) {
+    return res.status(429).json({
+      error: `Rate limit reached. Try again in ~${retryAfter} minutes.`,
+    });
+  }
+
+  const { url, orderId } = req.body || {};
+
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "Missing or invalid URL" });
+  }
+  if (!orderId || typeof orderId !== "string") {
+    return res.status(400).json({ error: "Missing or invalid order ID" });
+  }
+
+  const lsApiKey = process.env.LEMONSQUEEZY_API_KEY;
+  if (!lsApiKey) {
+    return res
+      .status(500)
+      .json({ error: "Payment verification not configured" });
+  }
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) {
+    return res.status(500).json({ error: "API key not configured" });
+  }
+
+  // Verify payment
+  const orderCheck = await verifyOrder(orderId, lsApiKey);
+  if (!orderCheck.valid) {
+    return res
+      .status(403)
+      .json({ error: `Payment could not be verified: ${orderCheck.reason}` });
+  }
+
+  try {
+    // Enhanced Claude analysis with web_search
+    const prompt = ENHANCED_PROMPT.replace("URL_PLACEHOLDER", url);
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      console.error("Claude API error:", data.error);
+      return res
+        .status(502)
+        .json({ error: "Analysis service error. Please try again." });
+    }
+
+    if (!data.content?.length) {
+      return res.status(502).json({ error: "Empty response from analysis" });
+    }
+
+    const textContent = data.content
+      .filter((item) => item.type === "text")
+      .map((item) => item.text)
+      .join("\n");
+
+    const jsonMatch = textContent.match(/\{[\s\S]*"overall_score"[\s\S]*\}/);
+    if (!jsonMatch) {
+      return res.status(502).json({ error: "Could not parse analysis" });
+    }
+
+    const cleaned = jsonMatch[0].replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (!parsed.overall_score || !parsed.categories) {
+      return res.status(502).json({ error: "Incomplete analysis data" });
+    }
+
+    // Generate PDF
+    const pdfBuffer = await generateRoastPdf({
+      ...parsed,
+      analyzedUrl: url,
+      generatedAt: new Date().toISOString(),
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="website-roast-report.pdf"'
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+    return res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error("Roast report error:", err);
+    return res
+      .status(500)
+      .json({ error: "Failed to generate report. Please try again." });
+  }
+}

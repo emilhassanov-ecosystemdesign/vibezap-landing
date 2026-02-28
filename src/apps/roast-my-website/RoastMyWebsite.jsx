@@ -555,12 +555,13 @@ export default function RoastMyWebsite() {
   const handleGetReport = () => {
     setPaymentProcessing(true);
     setPdfError(null);
+    // Don't include ?embed=1 — Url.Open() adds it automatically
     const checkoutUrl =
-      "https://vibezap.lemonsqueezy.com/checkout/buy/0c4823fd-0f0d-42bc-8362-b272910b8a55?embed=1";
+      "https://vibezap.lemonsqueezy.com/checkout/buy/0c4823fd-0f0d-42bc-8362-b272910b8a55";
     if (window.LemonSqueezy) {
       window.LemonSqueezy.Url.Open(checkoutUrl);
     } else {
-      window.open(checkoutUrl, "_blank");
+      window.open(checkoutUrl + "?embed=1", "_blank");
     }
     // Start polling for payment confirmation regardless of overlay method
     startPaymentPolling();

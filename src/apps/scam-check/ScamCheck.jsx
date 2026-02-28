@@ -396,12 +396,13 @@ export default function ScamCheck() {
   const handleGetReport = () => {
     setPaymentProcessing(true);
     setPdfError(null);
+    // Don't include ?embed=1 — Url.Open() adds it automatically
     const checkoutUrl =
-      "https://vibezap.lemonsqueezy.com/checkout/buy/d96e2de1-52de-49aa-879b-693d33f1c60a?embed=1";
+      "https://vibezap.lemonsqueezy.com/checkout/buy/d96e2de1-52de-49aa-879b-693d33f1c60a";
     if (window.LemonSqueezy) {
       window.LemonSqueezy.Url.Open(checkoutUrl);
     } else {
-      window.open(checkoutUrl, "_blank");
+      window.open(checkoutUrl + "?embed=1", "_blank");
     }
     // Start polling for payment confirmation regardless of overlay method
     startPaymentPolling();

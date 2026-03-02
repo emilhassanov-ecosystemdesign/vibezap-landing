@@ -439,6 +439,7 @@ export default function RoastMyWebsite() {
   const [pdfError, setPdfError] = useState(null);
   const [reportData, setReportData] = useState(null);
   const [emailStatus, setEmailStatus] = useState(null);
+  const [reportProgress, setReportProgress] = useState(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
   const resultRef = useRef(null);
   const reportRef = useRef(null);
@@ -592,6 +593,10 @@ export default function RoastMyWebsite() {
   const handleReportGeneration = async (oid) => {
     setPdfGenerating(true);
     setPdfError(null);
+    setReportProgress(null);
+    setReportData(null);
+    setEmailStatus(null);
+
     try {
       const response = await fetch("/api/roast-report", {
         method: "POST",
@@ -601,28 +606,88 @@ export default function RoastMyWebsite() {
           orderId: oid,
         }),
       });
+
+      // Non-streaming error (400, 403, 429, 500)
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || "Failed to generate report");
       }
-      const data = await response.json();
-      setReportData(data);
-      setEmailStatus(data.email || null);
 
-      // Auto-download PDF
-      if (data.pdfBase64) {
-        downloadPdfFromBase64(data.pdfBase64, data.pdfFilename || "website-roast-report.pdf");
+      // Read SSE stream
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let scrolledToReport = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse complete SSE messages (separated by double newline)
+        const messages = buffer.split("\n\n");
+        buffer = messages.pop(); // Keep incomplete message in buffer
+
+        for (const msg of messages) {
+          if (!msg.trim() || msg.startsWith(":")) continue; // Skip heartbeats
+
+          const eventMatch = msg.match(/^event:\s*(.+)$/m);
+          const dataMatch = msg.match(/^data:\s*(.+)$/m);
+          if (!eventMatch || !dataMatch) continue;
+
+          const eventType = eventMatch[1].trim();
+          let eventData;
+          try {
+            eventData = JSON.parse(dataMatch[1]);
+          } catch { continue; }
+
+          switch (eventType) {
+            case "progress":
+              setReportProgress(eventData);
+              break;
+            case "analysis":
+              setReportData({
+                success: true,
+                analysis: eventData.analysis,
+                analyzedUrl: eventData.analyzedUrl,
+                generatedAt: eventData.generatedAt,
+                pdfBase64: null,
+                pdfFilename: null,
+              });
+              setShowDetails(true);
+              if (!scrolledToReport) {
+                scrolledToReport = true;
+                setTimeout(() => {
+                  reportRef.current?.scrollIntoView({ behavior: "smooth" });
+                }, 400);
+              }
+              break;
+            case "pdf":
+              setReportData((prev) => ({
+                ...prev,
+                pdfBase64: eventData.pdfBase64,
+                pdfFilename: eventData.pdfFilename || "website-roast-report.pdf",
+              }));
+              downloadPdfFromBase64(
+                eventData.pdfBase64,
+                eventData.pdfFilename || "website-roast-report.pdf"
+              );
+              break;
+            case "email":
+              setEmailStatus(eventData);
+              break;
+            case "error":
+              throw new Error(eventData.error);
+          }
+        }
       }
-
-      // Scroll to report
-      setTimeout(() => {
-        reportRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 400);
     } catch (err) {
       console.error("Report generation error:", err);
       setPdfError(err.message || "Something went wrong generating your report.");
     } finally {
       setPdfGenerating(false);
+      setReportProgress(null);
     }
   };
 
@@ -642,6 +707,7 @@ export default function RoastMyWebsite() {
     setPdfError(null);
     setReportData(null);
     setEmailStatus(null);
+    setReportProgress(null);
     setOrderCompleted(false);
     orderIdRef.current = null;
 
@@ -1151,8 +1217,8 @@ export default function RoastMyWebsite() {
                     </>
                   )}
 
-                  {/* Generating report state */}
-                  {pdfGenerating && (
+                  {/* Generating report state (shown until analysis arrives) */}
+                  {pdfGenerating && !reportData && (
                     <>
                       <div
                         style={{
@@ -1161,7 +1227,12 @@ export default function RoastMyWebsite() {
                           animation: "pulse 1.5s ease-in-out infinite",
                         }}
                       >
-                        {"\uD83D\uDCDD"}
+                        {reportProgress?.stage === "payment" ? "\uD83D\uDCB3"
+                          : reportProgress?.stage === "fetching" ? "\uD83C\uDF10"
+                          : reportProgress?.stage === "analyzing" ? "\uD83D\uDD25"
+                          : reportProgress?.stage === "retrying" ? "\uD83D\uDD04"
+                          : reportProgress?.stage === "cached" ? "\u26A1"
+                          : "\uD83D\uDCDD"}
                       </div>
                       <h3
                         style={{
@@ -1171,7 +1242,7 @@ export default function RoastMyWebsite() {
                           marginBottom: "8px",
                         }}
                       >
-                        Generating Your Roast Report...
+                        {reportProgress?.message || "Generating Your Roast Report..."}
                       </h3>
                       <p
                         style={{
@@ -1181,9 +1252,12 @@ export default function RoastMyWebsite() {
                           lineHeight: 1.6,
                         }}
                       >
-                        Running deep analysis with 30+ specific fixes.
-                        <br />
-                        This usually takes 15-30 seconds.
+                        {!reportProgress && "Connecting to analysis engine..."}
+                        {reportProgress?.stage === "analyzing" && "Running deep analysis with 30+ specific fixes."}
+                        {reportProgress?.stage === "retrying" && "First attempt didn't work. Trying again..."}
+                        {reportProgress?.stage === "fetching" && "Reading website content for analysis."}
+                        {reportProgress?.stage === "payment" && "Confirming your purchase."}
+                        {reportProgress?.stage === "cached" && "Found your previously generated report."}
                       </p>
                       <div
                         style={{
@@ -1264,7 +1338,7 @@ export default function RoastMyWebsite() {
                       marginBottom: "32px",
                     }}
                   >
-                    {reportData.pdfBase64 && (
+                    {reportData.pdfBase64 ? (
                       <button
                         onClick={() =>
                           downloadPdfFromBase64(
@@ -1291,7 +1365,25 @@ export default function RoastMyWebsite() {
                       >
                         {"\u2B07"} Download PDF
                       </button>
-                    )}
+                    ) : pdfGenerating ? (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          borderRadius: "100px",
+                          padding: "10px 20px",
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: "11px",
+                          color: "rgba(255,255,255,0.35)",
+                          animation: "pulse 1.5s ease-in-out infinite",
+                        }}
+                      >
+                        Preparing PDF...
+                      </span>
+                    ) : null}
                     {emailStatus?.sent && (
                       <span
                         style={{

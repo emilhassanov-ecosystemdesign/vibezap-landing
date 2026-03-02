@@ -107,3 +107,57 @@ export async function consumeOrder(orderId) {
   memoryStore.set(key, { used: true, resetTime: Date.now() + 24 * 3600 * 1000 });
   return true;
 }
+
+// ── Report Caching (retry resilience) ────────────────────────────
+
+/**
+ * Cache a completed report in Redis so retries can serve it instantly.
+ * Stores for 24 hours. Silently fails if Redis is unavailable.
+ *
+ * @param {string} orderId
+ * @param {object} data  Report payload (analysis, pdfBase64, etc.)
+ */
+export async function cacheReport(orderId, data) {
+  const key = `report:${orderId}`;
+  const json = JSON.stringify(data);
+  const up = getUpstash();
+
+  if (up) {
+    try {
+      await redis(up, ["SET", key, json, "EX", "86400"]);
+      return;
+    } catch (err) {
+      console.warn("[store] cacheReport Upstash error:", err.message);
+    }
+  }
+
+  // In-memory fallback
+  memoryStore.set(key, { value: json, resetTime: Date.now() + 24 * 3600 * 1000 });
+}
+
+/**
+ * Retrieve a cached report. Returns parsed object or null.
+ *
+ * @param {string} orderId
+ * @returns {Promise<object|null>}
+ */
+export async function getCachedReport(orderId) {
+  const key = `report:${orderId}`;
+  const up = getUpstash();
+
+  if (up) {
+    try {
+      const raw = await redis(up, ["GET", key]);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      console.warn("[store] getCachedReport Upstash error:", err.message);
+    }
+  }
+
+  // In-memory fallback
+  const entry = memoryStore.get(key);
+  if (entry && Date.now() < entry.resetTime) {
+    return JSON.parse(entry.value);
+  }
+  return null;
+}

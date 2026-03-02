@@ -37,6 +37,27 @@ function setCorsHeaders(req, res) {
 }
 
 /**
+ * Pure-function CORS utilities for the Web API pattern (Request/Response).
+ * Used by SSE streaming endpoints that cannot use the legacy (req, res) API.
+ */
+export function validateOrigin(origin) {
+  if (!origin) return { allowed: true, isBrowser: false };
+  return { allowed: isAllowedOrigin(origin), isBrowser: true };
+}
+
+export function getCorsHeaders(origin) {
+  const headers = {
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+  };
+  if (origin && isAllowedOrigin(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
+
+/**
  * Run security checks. Returns true if the request was fully handled
  * (OPTIONS preflight or blocked origin) — caller should return early.
  */

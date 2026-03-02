@@ -441,6 +441,8 @@ export default function RoastMyWebsite() {
   const [emailStatus, setEmailStatus] = useState(null);
   const [reportProgress, setReportProgress] = useState(null);
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [popupBlocked, setPopupBlocked] = useState(false);
+  const [pollingTimedOut, setPollingTimedOut] = useState(false);
   const resultRef = useRef(null);
   const reportRef = useRef(null);
   const orderIdRef = useRef(null);
@@ -448,70 +450,7 @@ export default function RoastMyWebsite() {
   const pollIntervalRef = useRef(null);
   const checkoutOpenedAtRef = useRef(null);
 
-  // LemonSqueezy event handler ref (stable across renders)
-  const lsHandlerRef = useRef(null);
-  lsHandlerRef.current = (event) => {
-    console.log("[LS Event]", event.event, JSON.stringify(event).slice(0, 500));
-
-    if (event.event === "Checkout.Success") {
-      if (window.LemonSqueezy?.Url?.Close) {
-        window.LemonSqueezy.Url.Close();
-      }
-      // LS nests order data: event.data.order.data.{id, attributes}
-      const nested = event.data?.order?.data;
-      const orderData = event.data;
-      const oid =
-        nested?.id ||
-        nested?.attributes?.order_number ||
-        nested?.attributes?.identifier ||
-        orderData?.id ||
-        orderData?.order_number ||
-        orderData?.attributes?.identifier ||
-        orderData?.attributes?.order_number;
-      console.log("[LS] Checkout.Success — orderId:", oid);
-      if (oid) {
-        stopPolling();
-        setOrderCompleted(true);
-        setPaymentProcessing(false);
-        orderIdRef.current = String(oid);
-        handleReportGeneration(String(oid));
-      } else {
-        // Don't stop polling — let it find the order ID as fallback
-        console.warn("[LS] Could not extract order ID, polling will continue. Event:", JSON.stringify(event).slice(0, 1000));
-      }
-    }
-    if (event.event === "Checkout.Closed") {
-      // Don't stop polling — user may have closed after paying
-    }
-  };
-
-  // Load LemonSqueezy overlay script + register event handler
-  useEffect(() => {
-    function setupLS() {
-      // createLemonSqueezy() is required in SPAs to reinitialize event listeners
-      if (typeof window.createLemonSqueezy === "function") {
-        window.createLemonSqueezy();
-        console.log("[LS] createLemonSqueezy() called");
-      }
-      if (window.LemonSqueezy) {
-        window.LemonSqueezy.Setup({
-          eventHandler: (event) => lsHandlerRef.current?.(event),
-        });
-        console.log("[LS] Setup complete");
-      }
-    }
-
-    if (!document.getElementById("lemonsqueezy-js")) {
-      const script = document.createElement("script");
-      script.id = "lemonsqueezy-js";
-      script.src = "https://app.lemonsqueezy.com/js/lemon.js";
-      script.defer = true;
-      script.onload = () => setupLS();
-      document.head.appendChild(script);
-    } else {
-      setupLS();
-    }
-  }, []);
+  const checkoutUrlRef = useRef("https://vibezap.lemonsqueezy.com/checkout/buy/0c4823fd-0f0d-42bc-8362-b272910b8a55");
 
   // Stop any active payment polling
   const stopPolling = () => {
@@ -524,6 +463,7 @@ export default function RoastMyWebsite() {
   // Poll backend for a recent paid order
   const startPaymentPolling = () => {
     stopPolling();
+    setPollingTimedOut(false);
     const afterTs = new Date().toISOString();
     checkoutOpenedAtRef.current = afterTs;
     let attempts = 0;
@@ -533,6 +473,7 @@ export default function RoastMyWebsite() {
       attempts++;
       if (attempts > maxAttempts) {
         stopPolling();
+        setPollingTimedOut(true);
         return;
       }
       try {
@@ -540,17 +481,31 @@ export default function RoastMyWebsite() {
         const data = await resp.json();
         if (data.found && data.orderId) {
           stopPolling();
-          // Close the LemonSqueezy overlay so customer sees the report
-          if (window.LemonSqueezy?.Url?.Close) {
-            window.LemonSqueezy.Url.Close();
-          }
           setOrderCompleted(true);
           setPaymentProcessing(false);
+          setPopupBlocked(false);
           orderIdRef.current = String(data.orderId);
           handleReportGeneration(String(data.orderId));
         }
       } catch (_) { /* silent retry */ }
     }, 3000);
+  };
+
+  // Single immediate poll check (for "I've already paid" button)
+  const checkPaymentNow = async () => {
+    const afterTs = checkoutOpenedAtRef.current || new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    try {
+      const resp = await fetch(`/api/check-payment?product=roast&after=${encodeURIComponent(afterTs)}`);
+      const data = await resp.json();
+      if (data.found && data.orderId) {
+        stopPolling();
+        setOrderCompleted(true);
+        setPaymentProcessing(false);
+        setPopupBlocked(false);
+        orderIdRef.current = String(data.orderId);
+        handleReportGeneration(String(data.orderId));
+      }
+    } catch (_) { /* silent */ }
   };
 
   // Cleanup polling on unmount
@@ -561,16 +516,21 @@ export default function RoastMyWebsite() {
   const handleGetReport = () => {
     setPaymentProcessing(true);
     setPdfError(null);
-    // Don't include ?embed=1 — Url.Open() adds it automatically
-    const checkoutUrl =
-      "https://vibezap.lemonsqueezy.com/checkout/buy/0c4823fd-0f0d-42bc-8362-b272910b8a55";
-    if (window.LemonSqueezy) {
-      window.LemonSqueezy.Url.Open(checkoutUrl);
-    } else {
-      window.open(checkoutUrl + "?embed=1", "_blank");
+    setPopupBlocked(false);
+    setPollingTimedOut(false);
+
+    const win = window.open(checkoutUrlRef.current, "_blank");
+    if (!win) {
+      setPopupBlocked(true);
     }
-    // Start polling for payment confirmation regardless of overlay method
     startPaymentPolling();
+  };
+
+  const handleCancelPayment = () => {
+    stopPolling();
+    setPaymentProcessing(false);
+    setPopupBlocked(false);
+    setPollingTimedOut(false);
   };
 
   function downloadPdfFromBase64(base64, filename) {
@@ -751,6 +711,10 @@ export default function RoastMyWebsite() {
         @keyframes pulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.15); }
+        }
+
+        @keyframes roastSpin {
+          to { transform: rotate(360deg); }
         }
 
         @keyframes loading {
@@ -1134,8 +1098,8 @@ export default function RoastMyWebsite() {
                     animation: "slideUp 0.6s ease",
                   }}
                 >
-                  {/* Pre-purchase state */}
-                  {!orderCompleted && !pdfGenerating && (
+                  {/* Pre-purchase CTA */}
+                  {!orderCompleted && !pdfGenerating && !paymentProcessing && (
                     <>
                       <div style={{ fontSize: "28px", marginBottom: "12px" }}>{"\uD83D\uDCCB"}</div>
                       <h3
@@ -1194,26 +1158,141 @@ export default function RoastMyWebsite() {
                       </div>
                       <button
                         onClick={handleGetReport}
-                        disabled={paymentProcessing}
                         style={{
                           display: "inline-block",
-                          background: paymentProcessing
-                            ? "rgba(255,255,255,0.05)"
-                            : "linear-gradient(135deg, #ff2d55, #ff6b35)",
+                          background: "linear-gradient(135deg, #ff2d55, #ff6b35)",
                           border: "none",
                           borderRadius: "12px",
                           padding: "14px 32px",
                           fontFamily: "'Space Mono', monospace",
                           fontSize: "13px",
                           fontWeight: 700,
-                          color: paymentProcessing ? "rgba(255,255,255,0.3)" : "white",
-                          cursor: paymentProcessing ? "not-allowed" : "pointer",
+                          color: "white",
+                          cursor: "pointer",
                           textTransform: "uppercase",
                           letterSpacing: "2px",
                         }}
                       >
-                        {paymentProcessing ? "Processing..." : "Get Full Report \u2014 $5"}
+                        Get Full Report &mdash; $5
                       </button>
+                    </>
+                  )}
+
+                  {/* Payment waiting state */}
+                  {paymentProcessing && !orderCompleted && !pdfGenerating && (
+                    <>
+                      <div
+                        style={{
+                          width: "48px",
+                          height: "48px",
+                          margin: "0 auto 16px",
+                          border: "3px solid rgba(255,107,53,0.2)",
+                          borderTopColor: "#ff6b35",
+                          borderRadius: "50%",
+                          animation: "roastSpin 0.8s linear infinite",
+                        }}
+                      />
+                      <h3
+                        style={{
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: "20px",
+                          fontWeight: 700,
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {pollingTimedOut ? "Payment Not Detected Yet" : "Complete Your Purchase"}
+                      </h3>
+                      <p
+                        style={{
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontSize: "13px",
+                          color: "rgba(255,255,255,0.45)",
+                          marginBottom: "20px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {pollingTimedOut
+                          ? "If you completed the payment, click below to check again."
+                          : popupBlocked
+                            ? "Your browser blocked the checkout window. Use the link below to complete payment."
+                            : "Finish payment in the new tab. This page updates automatically."}
+                      </p>
+                      {popupBlocked && (
+                        <a
+                          href={checkoutUrlRef.current}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: "inline-block",
+                            background: "linear-gradient(135deg, #ff2d55, #ff6b35)",
+                            borderRadius: "12px",
+                            padding: "14px 32px",
+                            fontFamily: "'Space Mono', monospace",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            color: "white",
+                            textDecoration: "none",
+                            textTransform: "uppercase",
+                            letterSpacing: "2px",
+                            marginBottom: "16px",
+                          }}
+                        >
+                          Open Checkout
+                        </a>
+                      )}
+                      {pollingTimedOut && (
+                        <button
+                          onClick={handleGetReport}
+                          style={{
+                            display: "inline-block",
+                            background: "linear-gradient(135deg, #ff2d55, #ff6b35)",
+                            border: "none",
+                            borderRadius: "12px",
+                            padding: "14px 32px",
+                            fontFamily: "'Space Mono', monospace",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            color: "white",
+                            cursor: "pointer",
+                            textTransform: "uppercase",
+                            letterSpacing: "2px",
+                            marginBottom: "16px",
+                          }}
+                        >
+                          Try Again
+                        </button>
+                      )}
+                      <div style={{ display: "flex", gap: "16px", justifyContent: "center", marginTop: "4px" }}>
+                        <button
+                          onClick={checkPaymentNow}
+                          style={{
+                            background: "none",
+                            border: "1px solid rgba(255,255,255,0.15)",
+                            borderRadius: "8px",
+                            padding: "8px 20px",
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.6)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          I've already paid
+                        </button>
+                        <button
+                          onClick={handleCancelPayment}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: "8px 12px",
+                            fontFamily: "'DM Sans', sans-serif",
+                            fontSize: "12px",
+                            color: "rgba(255,255,255,0.3)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </>
                   )}
 

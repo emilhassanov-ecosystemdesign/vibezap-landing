@@ -223,89 +223,68 @@ export default async function handler(req, res) {
 
     const prompt = buildEnhancedPrompt(url, siteData);
     let parsed = null;
-    const MAX_ATTEMPTS = 2;
-    const RETRY_DELAY_MS = 10_000; // 10s between retries (fits within 60s maxDuration)
-    let lastError = null;
 
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      // Wait before retrying (skip delay on first attempt)
-      if (attempt > 1) {
-        console.log(`[roast-report] Waiting ${RETRY_DELAY_MS / 1000}s before attempt ${attempt}`);
-        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      }
+    console.log("[roast-report] Calling Claude API", { url, orderId });
 
-      console.log(`[roast-report] Attempt ${attempt}`, { url, orderId });
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 16000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
+    const data = await response.json();
 
-      const data = await response.json();
-
-      if (data.error) {
-        console.error("[roast-report] Claude API error:", data.error);
-        const msg = data.error.message || "";
-        if (msg.toLowerCase().includes("rate limit")) {
-          lastError = "rate_limit";
-          if (attempt < MAX_ATTEMPTS) {
-            console.log(`[roast-report] Rate limited, will retry after ${RETRY_DELAY_MS / 1000}s (attempt ${attempt}/${MAX_ATTEMPTS})`);
-            continue;
-          }
-          return res.status(429).json({
-            error: "Our AI is taking a breather. Please try again in about a minute.",
-          });
-        }
-        return res.status(502).json({
-          error: "Analysis service temporarily unavailable. Please try again.",
+    if (data.error) {
+      console.error("[roast-report] Claude API error:", data.error);
+      const msg = data.error.message || "";
+      if (msg.toLowerCase().includes("rate limit")) {
+        return res.status(429).json({
+          error: "Our AI is taking a breather. Please try again in about a minute.",
         });
       }
-
-      lastError = null;
-
-      console.log(`[roast-report] Response (attempt ${attempt})`, {
-        stop_reason: data.stop_reason,
-        input_tokens: data.usage?.input_tokens,
-        output_tokens: data.usage?.output_tokens,
-        content_blocks: data.content?.length,
+      return res.status(502).json({
+        error: "Analysis service temporarily unavailable. Please try again.",
       });
+    }
 
-      if (!data.content?.length) {
-        console.error(`[roast-report] Empty response (attempt ${attempt})`);
-        if (attempt < MAX_ATTEMPTS) continue;
-        return res.status(502).json({ error: "Empty response from analysis" });
-      }
+    console.log("[roast-report] Response", {
+      stop_reason: data.stop_reason,
+      input_tokens: data.usage?.input_tokens,
+      output_tokens: data.usage?.output_tokens,
+      content_blocks: data.content?.length,
+    });
 
-      if (data.stop_reason === "max_tokens") {
-        console.warn(`[roast-report] Response truncated (attempt ${attempt})`);
-      }
+    if (!data.content?.length) {
+      return res.status(502).json({ error: "Empty response from analysis" });
+    }
 
-      const textContent = data.content
-        .filter((item) => item.type === "text")
-        .map((item) => item.text)
-        .join("\n");
+    if (data.stop_reason === "max_tokens") {
+      console.warn("[roast-report] Response truncated");
+    }
 
-      parsed = extractJSON(textContent, "overall_score");
+    const textContent = data.content
+      .filter((item) => item.type === "text")
+      .map((item) => item.text)
+      .join("\n");
 
-      if (parsed && parsed.categories) {
-        console.log(`[roast-report] Parse success (attempt ${attempt})`, {
-          overall_score: parsed.overall_score,
-          fixes_count: parsed.specific_fixes?.length,
-        });
-        break;
-      }
+    parsed = extractJSON(textContent, "overall_score");
 
-      console.error(`[roast-report] JSON extraction failed (attempt ${attempt})`, {
+    if (parsed && parsed.categories) {
+      console.log("[roast-report] Parse success", {
+        overall_score: parsed.overall_score,
+        fixes_count: parsed.specific_fixes?.length,
+      });
+    } else {
+      console.error("[roast-report] JSON extraction failed", {
         stop_reason: data.stop_reason,
         output_tokens: data.usage?.output_tokens,
         textLength: textContent.length,

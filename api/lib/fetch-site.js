@@ -11,7 +11,7 @@
  */
 
 const MAX_BODY_CHARS = 15000;
-const FETCH_TIMEOUT_MS = 10000;
+const FETCH_TIMEOUT_MS = 5000;
 
 /**
  * Strip HTML tags and collapse whitespace.

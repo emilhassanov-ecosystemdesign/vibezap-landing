@@ -16,6 +16,12 @@ const COLORS = {
   pageBg: "#ffffff",
 };
 
+/** Strip characters outside Latin-1 that Helvetica cannot render. */
+function sanitizeText(text) {
+  if (!text) return "";
+  return String(text).replace(/[^\x00-\xFF]/g, "");
+}
+
 function getScoreColor(score) {
   if (score <= 3) return COLORS.high;
   if (score <= 5) return COLORS.medium;
@@ -76,7 +82,9 @@ function drawSectionHeader(doc, title, y) {
     .lineWidth(1.5)
     .stroke();
 
-  return y + 28;
+  const nextY = y + 28;
+  doc.y = nextY;
+  return nextY;
 }
 
 function drawWrappedText(doc, text, x, y, options = {}) {
@@ -208,7 +216,7 @@ export default function generateRoastPdf(data) {
         .fontSize(13)
         .font("Helvetica-Bold")
         .fillColor(COLORS.black)
-        .text(data.roast_headline || "", 50, 220, {
+        .text(sanitizeText(data.roast_headline), 50, 220, {
           align: "center",
           width: pageWidth,
         });
@@ -227,7 +235,7 @@ export default function generateRoastPdf(data) {
       y = drawSectionHeader(doc, "Executive Summary", y);
       y = drawWrappedText(
         doc,
-        data.executive_summary || data.roast_summary || "",
+        sanitizeText(data.executive_summary || data.roast_summary),
         50,
         y,
         { fontSize: 10, lineGap: 4 }
@@ -235,15 +243,9 @@ export default function generateRoastPdf(data) {
 
       // ── CATEGORY BREAKDOWN ──
       y = doc.y + 20;
+      doc.y = y;
       ensureSpace(doc, 300, pageCounter);
-      if (doc.y > 600) {
-        drawFooter(doc, pageCounter.value);
-        doc.addPage();
-        pageCounter.value++;
-        y = 50;
-      } else {
-        y = doc.y;
-      }
+      y = doc.y;
 
       y = drawSectionHeader(doc, "Category Breakdown", y);
 
@@ -300,12 +302,12 @@ export default function generateRoastPdf(data) {
             .fontSize(9)
             .font("Helvetica-Oblique")
             .fillColor(COLORS.gray)
-            .text(`"${cat.comment}"`, 50, y, { width: pageWidth });
+            .text(`"${sanitizeText(cat.comment)}"`, 50, y, { width: pageWidth });
           y = doc.y + 4;
         }
 
         // Detailed analysis
-        const analysis = cat.detailed_analysis || "";
+        const analysis = sanitizeText(cat.detailed_analysis);
         if (analysis) {
           y = drawWrappedText(doc, analysis, 50, y, {
             fontSize: 9,
@@ -317,10 +319,10 @@ export default function generateRoastPdf(data) {
       }
 
       // ── PRIORITY FIXES ──
-      drawFooter(doc, pageCounter.value);
-      doc.addPage();
-      pageCounter.value++;
-      y = 50;
+      y = doc.y + 16;
+      doc.y = y;
+      ensureSpace(doc, 200, pageCounter);
+      y = doc.y;
 
       y = drawSectionHeader(doc, "Priority Fixes", y);
 
@@ -360,6 +362,7 @@ export default function generateRoastPdf(data) {
           .lineWidth(1)
           .stroke();
         y = doc.y + 10;
+        doc.y = y;
 
         for (const fix of group.fixes) {
           ensureSpace(doc, 40, pageCounter);
@@ -371,7 +374,7 @@ export default function generateRoastPdf(data) {
             .fontSize(9)
             .font("Helvetica-Bold")
             .fillColor(COLORS.black)
-            .text(`•  ${fix.title || "Fix"}`, 56, y, { width: 440 });
+            .text(`•  ${sanitizeText(fix.title) || "Fix"}`, 56, y, { width: 440 });
 
           if (catTag) {
             doc
@@ -388,7 +391,7 @@ export default function generateRoastPdf(data) {
 
           // Fix description
           if (fix.description) {
-            y = drawWrappedText(doc, fix.description, 68, y, {
+            y = drawWrappedText(doc, sanitizeText(fix.description), 68, y, {
               fontSize: 8,
               color: COLORS.gray,
               width: 477,
@@ -410,7 +413,7 @@ export default function generateRoastPdf(data) {
       quickWins.forEach((win, i) => {
         ensureSpace(doc, 18, pageCounter);
         y = doc.y;
-        y = drawWrappedText(doc, `${i + 1}.  ${win}`, 50, y, {
+        y = drawWrappedText(doc, `${i + 1}.  ${sanitizeText(win)}`, 50, y, {
           fontSize: 9,
           color: COLORS.darkGray,
           lineGap: 2,
@@ -433,12 +436,12 @@ export default function generateRoastPdf(data) {
             .fontSize(9)
             .font("Helvetica-Bold")
             .fillColor(COLORS.black)
-            .text(`•  ${insight.suggestion || ""}`, 56, y, { width: 489 });
+            .text(`•  ${sanitizeText(insight.suggestion)}`, 56, y, { width: 489 });
           y = doc.y + 2;
           if (insight.example) {
             y = drawWrappedText(
               doc,
-              `Example: ${insight.example}`,
+              `Example: ${sanitizeText(insight.example)}`,
               68,
               y,
               { fontSize: 8, color: COLORS.gray, width: 477 }
@@ -449,10 +452,10 @@ export default function generateRoastPdf(data) {
       }
 
       // ── TECHNICAL NOTES ──
-      drawFooter(doc, pageCounter.value);
-      doc.addPage();
-      pageCounter.value++;
-      y = 50;
+      y = doc.y + 16;
+      doc.y = y;
+      ensureSpace(doc, 200, pageCounter);
+      y = doc.y;
 
       y = drawSectionHeader(doc, "Technical Notes", y);
 
@@ -463,7 +466,7 @@ export default function generateRoastPdf(data) {
           .fillColor(COLORS.black)
           .text("SEO Observations", 50, y);
         y = doc.y + 4;
-        y = drawWrappedText(doc, data.seo_notes, 50, y, {
+        y = drawWrappedText(doc, sanitizeText(data.seo_notes), 50, y, {
           fontSize: 9,
           color: COLORS.gray,
         });
@@ -479,7 +482,7 @@ export default function generateRoastPdf(data) {
           .fillColor(COLORS.black)
           .text("Accessibility", 50, y);
         y = doc.y + 4;
-        y = drawWrappedText(doc, data.accessibility_notes, 50, y, {
+        y = drawWrappedText(doc, sanitizeText(data.accessibility_notes), 50, y, {
           fontSize: 9,
           color: COLORS.gray,
         });
@@ -495,7 +498,7 @@ export default function generateRoastPdf(data) {
           .fillColor(COLORS.black)
           .text("Mobile Experience", 50, y);
         y = doc.y + 4;
-        y = drawWrappedText(doc, data.mobile_notes, 50, y, {
+        y = drawWrappedText(doc, sanitizeText(data.mobile_notes), 50, y, {
           fontSize: 9,
           color: COLORS.gray,
         });

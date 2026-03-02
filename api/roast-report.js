@@ -128,6 +128,7 @@ IMPORTANT:
 - "competitor_insights" should have exactly 3 items
 - Be savage but fair. Every observation must be specific to THIS website, not generic advice
 - Make every roast line quotable and funny
+- Write ALL text in English only. If the website contains non-English text (Cyrillic, CJK, Arabic, etc.), transliterate or describe it — NEVER include raw non-Latin characters in the JSON output
 - Respond with ONLY the JSON`;
 }
 

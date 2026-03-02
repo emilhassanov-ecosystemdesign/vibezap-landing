@@ -1,30 +1,9 @@
-// In-memory rate limiting (persists across warm invocations)
-const rateLimit = new Map();
+import { handleSecurity } from "./lib/security.js";
+import { checkRateLimit } from "./lib/store.js";
+import { fetchSite } from "./lib/fetch-site.js";
+
 const MAX_REQUESTS = 3;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-
-  // Clean up expired entries
-  for (const [key, entry] of rateLimit) {
-    if (now > entry.resetTime) rateLimit.delete(key);
-  }
-
-  const entry = rateLimit.get(ip);
-  if (!entry || now > entry.resetTime) {
-    rateLimit.set(ip, { count: 1, resetTime: now + WINDOW_MS });
-    return null;
-  }
-
-  if (entry.count >= MAX_REQUESTS) {
-    const retryAfter = Math.ceil((entry.resetTime - now) / 60000);
-    return retryAfter;
-  }
-
-  entry.count++;
-  return null;
-}
 
 /**
  * Extract and parse JSON from Claude's text response.
@@ -73,13 +52,16 @@ function extractJSON(rawText, requiredField) {
 }
 
 export default async function handler(req, res) {
+  // CORS + origin validation
+  if (handleSecurity(req, res)) return;
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   // Rate limit by IP
   const ip = (req.headers["x-forwarded-for"] || "unknown").split(",")[0].trim();
-  const retryAfter = checkRateLimit(ip);
+  const retryAfter = await checkRateLimit(`rl:roast:${ip}`, MAX_REQUESTS, WINDOW_MS);
   if (retryAfter !== null) {
     return res.status(429).json({
       error: `Whoa, slow down! You've used all ${MAX_REQUESTS} roasts for this hour. Come back in ~${retryAfter} minutes for more burns.`,
@@ -98,23 +80,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
-        messages: [
-          {
-            role: "user",
-            content: `You are a brutally honest website critic with a sharp sense of humor. Visit and analyze this website: ${url}
+    // Pre-fetch website content so Claude has actual page data
+    const siteData = await fetchSite(url);
+    let siteContext = "";
+    if (siteData.ok) {
+      siteContext = `\n\nHere is the actual content from the website:\n---\nTitle: ${siteData.title || "(none)"}\nDescription: ${siteData.description || "(none)"}\nURL (after redirects): ${siteData.finalUrl || url}\n\nContent:\n${siteData.bodyText}\n---\nBase your analysis on this content. You may also use web_search for additional context.`;
+    } else {
+      siteContext = `\n\nNote: Pre-fetch failed (${siteData.error || "unavailable"}). Use web_search to find and analyze the website.`;
+    }
 
-Analyze the website and return ONLY a JSON object (no markdown, no backticks, no preamble) with this exact structure:
+    const userMessage = `You are a brutally honest website critic with a sharp sense of humor. Analyze this website: ${url}${siteContext}
+
+Return ONLY a JSON object (no markdown, no backticks, no preamble) with this exact structure:
 {
   "overall_score": <number 1-10>,
   "roast_headline": "<a short, savage, funny one-liner roast of the site>",
@@ -130,45 +107,72 @@ Analyze the website and return ONLY a JSON object (no markdown, no backticks, no
   "severity": "<one of: brutal, harsh, mild, decent, fire>"
 }
 
-Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quotable and funny. Respond with ONLY the JSON.`,
-          },
-        ],
-      }),
-    });
+Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quotable and funny. Respond with ONLY the JSON.`;
 
-    const data = await response.json();
+    const MAX_ATTEMPTS = 2;
+    const RETRY_DELAY_MS = 5_000;
 
-    if (data.error) {
-      const msg = data.error.message || "";
-      if (msg.toLowerCase().includes("rate limit")) {
-        return res.status(429).json({
-          error: "Our AI is taking a breather. Please try again in about a minute.",
-        });
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        console.log(`[roast] Waiting ${RETRY_DELAY_MS / 1000}s before attempt ${attempt}`);
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
       }
-      return res.status(502).json({ error: "Analysis service temporarily unavailable. Please try again." });
-    }
 
-    if (!data.content || data.content.length === 0) {
-      return res.status(502).json({ error: "Empty response from API" });
-    }
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          messages: [{ role: "user", content: userMessage }],
+        }),
+      });
 
-    // Extract text blocks and parse JSON
-    const textContent = data.content
-      .filter((item) => item.type === "text")
-      .map((item) => item.text)
-      .join("\n");
+      const data = await response.json();
 
-    const parsed = extractJSON(textContent, "overall_score");
+      if (data.error) {
+        const msg = data.error.message || "";
+        if (msg.toLowerCase().includes("rate limit")) {
+          if (attempt < MAX_ATTEMPTS) {
+            console.log(`[roast] Rate limited, will retry (attempt ${attempt}/${MAX_ATTEMPTS})`);
+            continue;
+          }
+          return res.status(429).json({
+            error: "Our AI is taking a breather. Please try again in about a minute.",
+          });
+        }
+        return res.status(502).json({ error: "Analysis service temporarily unavailable. Please try again." });
+      }
 
-    if (!parsed || !parsed.categories) {
+      if (!data.content || data.content.length === 0) {
+        if (attempt < MAX_ATTEMPTS) continue;
+        return res.status(502).json({ error: "Empty response from API" });
+      }
+
+      // Extract text blocks and parse JSON
+      const textContent = data.content
+        .filter((item) => item.type === "text")
+        .map((item) => item.text)
+        .join("\n");
+
+      const parsed = extractJSON(textContent, "overall_score");
+
+      if (parsed && parsed.categories) {
+        return res.status(200).json(parsed);
+      }
+
       console.error("[roast] JSON extraction failed", {
         textLength: textContent.length,
         preview: textContent.substring(0, 500),
       });
-      return res.status(502).json({ error: "Could not parse the roast. Please try again." });
     }
 
-    return res.status(200).json(parsed);
+    return res.status(502).json({ error: "Could not parse the roast. Please try again." });
   } catch (err) {
     console.error("Roast API error:", err);
     return res.status(500).json({ error: "Internal server error" });

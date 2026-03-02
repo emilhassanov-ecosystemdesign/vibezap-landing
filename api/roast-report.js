@@ -1,28 +1,12 @@
 import generateRoastPdf from "./lib/generate-roast-pdf.js";
 import { verifyOrder } from "./lib/verify-order.js";
 import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
+import { handleSecurity } from "./lib/security.js";
+import { checkRateLimit, consumeOrder } from "./lib/store.js";
+import { fetchSite } from "./lib/fetch-site.js";
 
-// In-memory rate limiting
-const rateLimit = new Map();
 const MAX_REQUESTS = 10;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  for (const [key, entry] of rateLimit) {
-    if (now > entry.resetTime) rateLimit.delete(key);
-  }
-  const entry = rateLimit.get(ip);
-  if (!entry || now > entry.resetTime) {
-    rateLimit.set(ip, { count: 1, resetTime: now + WINDOW_MS });
-    return null;
-  }
-  if (entry.count >= MAX_REQUESTS) {
-    return Math.ceil((entry.resetTime - now) / 60000);
-  }
-  entry.count++;
-  return null;
-}
 
 /**
  * Extract and parse JSON from Claude's text response.
@@ -76,9 +60,21 @@ function extractJSON(rawText, requiredField) {
   return null;
 }
 
-const ENHANCED_PROMPT = `You are a brutally honest website critic — think Gordon Ramsay reviewing websites. You have a sharp sense of humor but you're also deeply knowledgeable about web design, UX, copywriting, performance, and trust signals. This is a PAID premium report, so be thorough and provide extraordinary detail.
+/**
+ * Build the enhanced prompt. If we have pre-fetched site content, include it
+ * so Claude doesn't depend solely on web_search finding the site.
+ */
+function buildEnhancedPrompt(url, siteData) {
+  let siteContext = "";
+  if (siteData && siteData.ok) {
+    siteContext = `\n\nHere is the actual content fetched from the website for your reference. Use this as your PRIMARY source for analysis:\n---\nPage Title: ${siteData.title || "(none)"}\nMeta Description: ${siteData.description || "(none)"}\nURL (after redirects): ${siteData.finalUrl || url}\n\nPage Content:\n${siteData.bodyText}\n---\nYou may also use web_search for supplementary research (competitors, industry context, etc.), but base your analysis on the content above.`;
+  } else {
+    siteContext = `\n\nNote: We attempted to pre-fetch this website but it ${siteData?.error ? `failed (${siteData.error})` : "was unavailable"}. Use web_search to find and analyze the website. If you truly cannot access or find ANY information about this site, you MUST still provide your best analysis based on whatever you can find.`;
+  }
 
-Visit and analyze this website: URL_PLACEHOLDER
+  return `You are a brutally honest website critic — think Gordon Ramsay reviewing websites. You have a sharp sense of humor but you're also deeply knowledgeable about web design, UX, copywriting, performance, and trust signals. This is a PAID premium report, so be thorough and provide extraordinary detail.
+
+Analyze this website: ${url}${siteContext}
 
 Return ONLY a JSON object (no markdown, no backticks, no preamble) with this exact structure:
 {
@@ -112,15 +108,73 @@ IMPORTANT:
 - Be savage but fair. Every observation must be specific to THIS website, not generic advice
 - Make every roast line quotable and funny
 - Respond with ONLY the JSON`;
+}
+
+/**
+ * Quality gate: detect reports where Claude couldn't actually analyze the site.
+ * Returns null if valid, or an error string if the report is garbage.
+ */
+function checkReportQuality(parsed) {
+  // All category scores are 0 → Claude couldn't see the site
+  const cats = parsed.categories || {};
+  const allZero =
+    parsed.overall_score === 0 &&
+    Object.values(cats).every((c) => (c.score || 0) === 0);
+
+  if (allZero) {
+    return "All scores are 0 — analysis failed";
+  }
+
+  // Check for "can't find it" language in the summary/executive fields
+  const textToCheck = [
+    parsed.executive_summary || "",
+    parsed.roast_summary || "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const failPhrases = [
+    "unable to access",
+    "unable to locate",
+    "could not locate",
+    "could not access",
+    "could not be accessed",
+    "could not find",
+    "cannot be accessed",
+    "doesn't exist",
+    "does not exist",
+    "vanished",
+    "website is down",
+    "website appears to be",
+    "couldn't reach",
+    "cannot reach",
+  ];
+
+  for (const phrase of failPhrases) {
+    if (textToCheck.includes(phrase)) {
+      return `Analysis contains failure language: "${phrase}"`;
+    }
+  }
+
+  // Suspiciously few fixes for a paid report (expect 30+)
+  if ((parsed.specific_fixes || []).length < 3) {
+    return `Only ${(parsed.specific_fixes || []).length} fixes — analysis likely failed`;
+  }
+
+  return null; // Quality OK
+}
 
 export default async function handler(req, res) {
+  // CORS + origin validation
+  if (handleSecurity(req, res)) return;
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Rate limit
+  // Rate limit by IP
   const ip = (req.headers["x-forwarded-for"] || "unknown").split(",")[0].trim();
-  const retryAfter = checkRateLimit(ip);
+  const retryAfter = await checkRateLimit(`rl:roast-report:${ip}`, MAX_REQUESTS, WINDOW_MS);
   if (retryAfter !== null) {
     return res.status(429).json({
       error: `Rate limit reached. Try again in ~${retryAfter} minutes.`,
@@ -148,7 +202,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "API key not configured" });
   }
 
-  // Verify payment (now also returns customer email)
+  // Verify payment
   const orderCheck = await verifyOrder(orderId, lsApiKey, 500);
   if (!orderCheck.valid) {
     return res
@@ -157,11 +211,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    const prompt = ENHANCED_PROMPT.replace("URL_PLACEHOLDER", url);
+    // Pre-fetch website content for reliable analysis
+    console.log("[roast-report] Pre-fetching website:", url);
+    const siteData = await fetchSite(url);
+    console.log("[roast-report] Pre-fetch result:", {
+      ok: siteData.ok,
+      title: siteData.title?.substring(0, 60),
+      bodyLength: siteData.bodyText?.length,
+      error: siteData.error,
+    });
+
+    const prompt = buildEnhancedPrompt(url, siteData);
     let parsed = null;
     const MAX_ATTEMPTS = 2;
+    const RETRY_DELAY_MS = 10_000; // 10s between retries (fits within 60s maxDuration)
+    let lastError = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // Wait before retrying (skip delay on first attempt)
+      if (attempt > 1) {
+        console.log(`[roast-report] Waiting ${RETRY_DELAY_MS / 1000}s before attempt ${attempt}`);
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      }
+
       console.log(`[roast-report] Attempt ${attempt}`, { url, orderId });
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -181,11 +253,15 @@ export default async function handler(req, res) {
 
       const data = await response.json();
 
-      // API-level errors: return immediately, no retry
       if (data.error) {
         console.error("[roast-report] Claude API error:", data.error);
         const msg = data.error.message || "";
         if (msg.toLowerCase().includes("rate limit")) {
+          lastError = "rate_limit";
+          if (attempt < MAX_ATTEMPTS) {
+            console.log(`[roast-report] Rate limited, will retry after ${RETRY_DELAY_MS / 1000}s (attempt ${attempt}/${MAX_ATTEMPTS})`);
+            continue;
+          }
           return res.status(429).json({
             error: "Our AI is taking a breather. Please try again in about a minute.",
           });
@@ -194,6 +270,8 @@ export default async function handler(req, res) {
           error: "Analysis service temporarily unavailable. Please try again.",
         });
       }
+
+      lastError = null;
 
       console.log(`[roast-report] Response (attempt ${attempt})`, {
         stop_reason: data.stop_reason,
@@ -239,6 +317,26 @@ export default async function handler(req, res) {
     if (!parsed || !parsed.categories) {
       return res.status(502).json({
         error: "Analysis incomplete — please tap 'Try Again'. If the problem persists, contact support@vibezap.dev.",
+      });
+    }
+
+    // Quality gate: reject garbage reports (e.g. "can't find the site")
+    const qualityIssue = checkReportQuality(parsed);
+    if (qualityIssue) {
+      console.error("[roast-report] Quality gate FAILED:", qualityIssue, {
+        overall_score: parsed.overall_score,
+        fixes_count: parsed.specific_fixes?.length,
+      });
+      return res.status(502).json({
+        error: "We couldn't fully analyze this website. Please verify the URL is correct and accessible, then tap 'Try Again'.",
+      });
+    }
+
+    // Consume order AFTER quality validation — so failed reports allow retry
+    const isFirstUse = await consumeOrder(orderId);
+    if (!isFirstUse) {
+      return res.status(409).json({
+        error: "A report has already been generated for this order. Check your email or contact support@vibezap.dev.",
       });
     }
 

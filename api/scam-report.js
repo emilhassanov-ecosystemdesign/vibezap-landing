@@ -1,28 +1,11 @@
 import generateScamPdf from "./lib/generate-scam-pdf.js";
 import { verifyOrder } from "./lib/verify-order.js";
 import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
+import { handleSecurity } from "./lib/security.js";
+import { checkRateLimit, consumeOrder } from "./lib/store.js";
 
-// In-memory rate limiting
-const rateLimit = new Map();
 const MAX_REQUESTS = 10;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  for (const [key, entry] of rateLimit) {
-    if (now > entry.resetTime) rateLimit.delete(key);
-  }
-  const entry = rateLimit.get(ip);
-  if (!entry || now > entry.resetTime) {
-    rateLimit.set(ip, { count: 1, resetTime: now + WINDOW_MS });
-    return null;
-  }
-  if (entry.count >= MAX_REQUESTS) {
-    return Math.ceil((entry.resetTime - now) / 60000);
-  }
-  entry.count++;
-  return null;
-}
 
 /**
  * Extract and parse JSON from Claude's text response.
@@ -116,13 +99,16 @@ Return ONLY a JSON object (no markdown, no backticks) with this exact structure:
 Be thorough and accurate. Provide real, actionable analysis. Respond with ONLY the JSON.`;
 
 export default async function handler(req, res) {
+  // CORS + origin validation
+  if (handleSecurity(req, res)) return;
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Rate limit
+  // Rate limit by IP
   const ip = (req.headers["x-forwarded-for"] || "unknown").split(",")[0].trim();
-  const retryAfter = checkRateLimit(ip);
+  const retryAfter = await checkRateLimit(`rl:scam-report:${ip}`, MAX_REQUESTS, WINDOW_MS);
   if (retryAfter !== null) {
     return res.status(429).json({
       error: `Rate limit reached. Try again in ~${retryAfter} minutes.`,
@@ -155,7 +141,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "API key not configured" });
   }
 
-  // Verify payment (now also returns customer email)
+  // Verify payment
   const orderCheck = await verifyOrder(orderId, lsApiKey, 300);
   if (!orderCheck.valid) {
     return res
@@ -163,12 +149,28 @@ export default async function handler(req, res) {
       .json({ error: `Payment could not be verified: ${orderCheck.reason}` });
   }
 
+  // Prevent order ID reuse — each order can only generate one report
+  const isFirstUse = await consumeOrder(orderId);
+  if (!isFirstUse) {
+    return res.status(409).json({
+      error: "A report has already been generated for this order. Check your email or contact support@vibezap.dev.",
+    });
+  }
+
   try {
     const prompt = ENHANCED_PROMPT.replace("MESSAGE_PLACEHOLDER", message);
     let parsed = null;
     const MAX_ATTEMPTS = 2;
+    const RETRY_DELAY_MS = 10_000; // 10s between retries (fits within 30s maxDuration)
+    let lastError = null;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      // Wait before retrying (skip delay on first attempt)
+      if (attempt > 1) {
+        console.log(`[scam-report] Waiting ${RETRY_DELAY_MS / 1000}s before attempt ${attempt}`);
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      }
+
       console.log(`[scam-report] Attempt ${attempt}`, { orderId });
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -187,11 +189,15 @@ export default async function handler(req, res) {
 
       const data = await response.json();
 
-      // API-level errors: return immediately, no retry
       if (data.error) {
         console.error("[scam-report] Claude API error:", data.error);
         const msg = data.error.message || "";
         if (msg.toLowerCase().includes("rate limit")) {
+          lastError = "rate_limit";
+          if (attempt < MAX_ATTEMPTS) {
+            console.log(`[scam-report] Rate limited, will retry after ${RETRY_DELAY_MS / 1000}s (attempt ${attempt}/${MAX_ATTEMPTS})`);
+            continue;
+          }
           return res.status(429).json({
             error: "Our AI is taking a breather. Please try again in about a minute.",
           });
@@ -200,6 +206,8 @@ export default async function handler(req, res) {
           error: "Analysis service temporarily unavailable. Please try again.",
         });
       }
+
+      lastError = null;
 
       console.log(`[scam-report] Response (attempt ${attempt})`, {
         stop_reason: data.stop_reason,

@@ -1,3 +1,5 @@
+import { handleSecurity } from "./lib/security.js";
+
 /**
  * Polls LemonSqueezy API for a recent paid order matching the product.
  * Used as a fallback when checkout overlay events don't fire.
@@ -7,6 +9,9 @@
  *   after:   ISO timestamp — only return orders created after this time
  */
 export default async function handler(req, res) {
+  // CORS + origin validation
+  if (handleSecurity(req, res)) return;
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }

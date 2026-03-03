@@ -18,17 +18,25 @@ VibeZap is deployed on **Vercel** with automatic Git integration.
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/roast-report.js": { "maxDuration": 60 },
+    "api/scam-report.js": { "maxDuration": 30 }
+  }
 }
 ```
 
 The SPA rewrite ensures all client-side routes (e.g., `/roast`, `/scam-check`) resolve to `index.html`, where React Router handles routing.
+
+**Function timeouts:** Premium report endpoints need extended timeouts because they call Claude with large prompts, auto-retry on parse failure, generate PDFs, and send emails. Free endpoints use the default 10s timeout.
 
 ### Environment Variables (Vercel Dashboard)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ANTHROPIC_API_KEY` | Yes | Claude API key for AI-powered tools |
+| `LEMONSQUEEZY_API_KEY` | Yes | Payment verification for paid reports |
+| `RESEND_API_KEY` | No | Email delivery for PDF reports (reports still work without it) |
 
 To add/update: Vercel Dashboard → Project → Settings → Environment Variables
 

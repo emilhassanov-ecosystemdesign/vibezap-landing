@@ -51,7 +51,49 @@ AI-powered brutally honest website critique. Enter any URL and get a roast with 
 - **Background:** Dark (`#0a0a0b`)
 - **Typewriter effect:** Headline reveals character by character
 
+## Premium Flow ($5 Full Report)
+
+### User Flow
+1. User completes free roast (above)
+2. CTA appears: "Get Full Report"
+3. User clicks → LemonSqueezy overlay checkout opens
+4. After payment, `Checkout.Success` event fires (or fallback polling via `/api/check-payment`)
+5. Frontend calls `POST /api/roast-report` with URL + order ID
+6. Backend verifies payment, runs enhanced Claude analysis with web search, generates PDF
+7. PDF downloads automatically + email sent to customer
+
+### Premium API
+- **Endpoint:** POST /api/roast-report
+- **Input:** `{ "url": "string", "orderId": "string" }`
+- **Output:** `{ success, analysis, pdfBase64, pdfFilename, email, generatedAt, analyzedUrl }`
+- **Model:** claude-sonnet-4-20250514 (16000 max_tokens + web_search tool)
+- **Rate Limit:** 10 req/hour per IP
+- **Timeout:** 60s (vercel.json)
+- **Payment verification:** LemonSqueezy API order check (status=paid, total=$5)
+- **Retry:** Auto-retries once on JSON parse failure before returning error
+
+### PDF Contents
+- Overall score, headline, severity, executive summary
+- 5 category breakdowns with detailed analysis
+- 30+ specific fixes (prioritized by high/medium/low)
+- Quick wins, competitor insights, SEO/accessibility/mobile notes
+
+### Gotchas
+- **max_tokens must be 16000+** — The enhanced prompt requests 30+ specific fixes, 5 detailed category analyses, executive summary, and 3 notes paragraphs. Combined with web_search consuming output tokens, anything under 16000 risks truncation and "Could not parse analysis" errors.
+- **JSON parsing uses `extractJSON()`** — 3-strategy parser (direct → bracket-counted → regex). Never replace with raw regex matching.
+- **Payment polling fallback** — LemonSqueezy overlay events don't always fire. Frontend polls `/api/check-payment?product=roast&after=<timestamp>` every 3s for up to 3 minutes.
+
+### Environment Variables
+- `ANTHROPIC_API_KEY` — Claude API (shared with free tier)
+- `LEMONSQUEEZY_API_KEY` — Order verification
+- `RESEND_API_KEY` — Email delivery (optional, report still works without it)
+
 ## Files
 
 - `RoastMyWebsite.jsx` — Full UI component (~860 lines)
-- `../../api/roast.js` — Serverless API endpoint
+- `../../api/roast.js` — Free roast API endpoint
+- `../../api/roast-report.js` — Premium report API endpoint
+- `../../api/check-payment.js` — Payment polling fallback
+- `../../api/lib/generate-roast-pdf.js` — PDF generation
+- `../../api/lib/verify-order.js` — LemonSqueezy order verification
+- `../../api/lib/send-report-email.js` — Email delivery via Resend

@@ -54,9 +54,11 @@ AI-powered scam detection tool. Users paste suspicious emails, text messages, or
 - **Endpoint:** POST /api/scam-report
 - **Input:** `{ "message": "string", "orderId": "string" }`
 - **Output:** PDF file (`application/pdf`)
-- **Model:** claude-sonnet-4-20250514 (2000 max_tokens vs free tier's 1200)
+- **Model:** claude-sonnet-4-20250514 (8000 max_tokens vs free tier's 1200)
 - **Rate Limit:** 10 req/hour per IP
+- **Timeout:** 30s (vercel.json)
 - **Payment verification:** LemonSqueezy API order check (status=paid, total=$3)
+- **Retry:** Auto-retries once on JSON parse failure before returning error
 
 ### PDF Contents
 - **Page 1:** VibeZap branding, verdict badge, risk score, executive summary, original message

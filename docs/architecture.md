@@ -63,17 +63,33 @@ Only extract to `shared/` when **3+ apps** need the same thing:
 
 ```
 api/
-├── roast.js         # POST /api/roast
-├── scam-check.js    # POST /api/scam-check  (future)
-└── ...
+├── roast.js              # POST /api/roast (free)
+├── roast-report.js       # POST /api/roast-report (paid, $5)
+├── scam-check.js         # POST /api/scam-check (free)
+├── scam-report.js        # POST /api/scam-report (paid, $3)
+├── check-payment.js      # GET /api/check-payment (polling fallback)
+└── lib/
+    ├── generate-roast-pdf.js
+    ├── generate-scam-pdf.js
+    ├── verify-order.js
+    └── send-report-email.js
 ```
 
-Each API endpoint follows the same pattern:
+### Free endpoints follow this pattern:
 1. Validate request method (POST only)
 2. Parse and validate input
 3. Rate limit check (per IP)
 4. Call Anthropic API with tool-specific prompt
 5. Parse and return structured JSON
+
+### Paid report endpoints add:
+1. Verify payment via LemonSqueezy API (`verifyOrder()`)
+2. Call Anthropic API with enhanced prompt (larger max_tokens)
+3. Parse JSON using `extractJSON()` (3-strategy robust parser)
+4. Auto-retry once on parse failure
+5. Generate PDF via pdfkit
+6. Send email via Resend (non-blocking)
+7. Return JSON with base64-encoded PDF
 
 ### Rate Limiting
 Currently in-memory (`Map` per function instance). Resets on cold starts. For persistent rate limiting, consider Vercel KV or Upstash Redis.
@@ -99,7 +115,21 @@ No database. No auth. No sessions. Each request is stateless.
 ## Payment Flow
 
 ```
-User clicks "Upgrade" → Redirect to LemonSqueezy checkout → Payment processed → Webhook (future) → Deliver premium content
+User clicks "Get Report" → LemonSqueezy overlay checkout opens
+  → Payment processed → Checkout.Success event fires (or fallback polling)
+  → Frontend calls /api/<tool>-report with orderId
+  → Backend verifies payment via LemonSqueezy API
+  → Enhanced Claude analysis → PDF generation → Email delivery
+  → PDF auto-downloads + report rendered on-screen
 ```
 
-Currently checkout links are direct redirects. For gated content, add LemonSqueezy webhook verification.
+### Payment Verification
+- Backend calls LemonSqueezy API to verify order status=paid and correct amount
+- `check-payment.js` provides a polling fallback when checkout overlay events don't fire
+- Polling runs every 3s for up to 3 minutes with 30s clock-skew buffer
+
+### Report Generation Gotchas
+- **max_tokens must match prompt size** — Premium prompts request large JSON structures. The `web_search` tool also consumes output tokens. Insufficient max_tokens causes truncation and parse failures.
+- **Auto-retry** — Report endpoints retry once on JSON parse failure before returning an error to the user.
+- **`extractJSON()` parser** — Uses 3 strategies (direct parse → bracket-counted → regex fallback) for robust JSON extraction from Claude responses. Never replace with raw regex.
+- **Function timeouts** — Set in `vercel.json`: 60s for roast-report, 30s for scam-report.

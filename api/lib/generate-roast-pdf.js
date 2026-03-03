@@ -48,6 +48,11 @@ function getPriorityColor(priority) {
 
 function drawFooter(doc, pageNum) {
   const y = doc.page.height - 50;
+  // Temporarily remove bottom margin so PDFKit doesn't trigger
+  // automatic page breaks when drawing below the content area
+  const savedMargin = doc.page.margins.bottom;
+  doc.page.margins.bottom = 0;
+
   doc
     .fontSize(7)
     .font("Helvetica")
@@ -68,6 +73,8 @@ function drawFooter(doc, pageNum) {
       width: doc.page.width - 100,
       lineBreak: false,
     });
+
+  doc.page.margins.bottom = savedMargin;
 }
 
 function drawSectionHeader(doc, title, y) {

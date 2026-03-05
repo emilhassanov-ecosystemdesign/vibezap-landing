@@ -296,6 +296,15 @@ export default function VibeZapLanding() {
       link: "/scam-check",
     },
     {
+      icon: "\uD83C\uDF31",
+      title: "Land Design Generator",
+      description: "Enter your location and describe your land. Get an AI-powered permaculture design with plant lists, water management, and implementation timeline.",
+      price: "Free / $7 full package",
+      tag: "Live",
+      tagColor: "#4ade80",
+      link: "/land-design",
+    },
+    {
       icon: "\uD83D\uDCF1",
       title: "Screenshot \u2192 Mockup",
       description: "Upload any screenshot. Get it placed in a gorgeous device mockup \u2014 phones, laptops, tablets. Download instantly.",

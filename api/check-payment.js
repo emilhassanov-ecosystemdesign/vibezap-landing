@@ -5,7 +5,7 @@ import { handleSecurity } from "./lib/security.js";
  * Used as a fallback when checkout overlay events don't fire.
  *
  * Query params:
- *   product: "roast" (500 cents) or "scam" (300 cents)
+ *   product: "roast" (500 cents), "scam" (300 cents), or "land" (700 cents)
  *   after:   ISO timestamp — only return orders created after this time
  */
 export default async function handler(req, res) {
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   const { product, after } = req.query;
 
-  if (!product || !["roast", "scam"].includes(product)) {
+  if (!product || !["roast", "scam", "land"].includes(product)) {
     return res.status(400).json({ error: "Invalid product parameter" });
   }
 
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Not configured" });
   }
 
-  const expectedTotal = product === "roast" ? 500 : 300;
+  const expectedTotal = product === "roast" ? 500 : product === "land" ? 700 : 300;
   // Add 30-second buffer to handle clock skew
   const afterTime = after
     ? new Date(after).getTime() - 30000

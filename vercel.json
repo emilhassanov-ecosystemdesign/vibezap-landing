@@ -22,6 +22,12 @@
     },
     "api/roast-report.js": {
       "maxDuration": 300
+    },
+    "api/land-design.js": {
+      "maxDuration": 60
+    },
+    "api/land-design-report.js": {
+      "maxDuration": 120
     }
   }
 }

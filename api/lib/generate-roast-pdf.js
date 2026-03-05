@@ -196,7 +196,7 @@ export default function generateRoastPdf(data) {
         .fontSize(10)
         .font("Helvetica-Bold")
         .fillColor("#ffffff")
-        .text(sevText + " ROAST", badgeX, 132, {
+        .text(sevText + " ROAST", badgeX, 134, {
           align: "center",
           width: badgeWidth,
         });

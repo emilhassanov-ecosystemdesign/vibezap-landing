@@ -620,71 +620,6 @@ export default function LandDesign() {
               {description.length}/3000
             </div>
 
-            {/* Sketch Upload (optional, for paid tier) */}
-            <div style={{ marginTop: "20px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                <label style={{
-                  fontFamily: THEME.fontMono, fontSize: "11px",
-                  color: THEME.textDim, textTransform: "uppercase", letterSpacing: "2px",
-                }}>Sketch Upload</label>
-                <span style={{
-                  fontFamily: THEME.fontMono, fontSize: "9px", padding: "2px 8px",
-                  background: "rgba(251,191,36,0.15)", color: "#fbbf24",
-                  borderRadius: "4px", border: "1px solid rgba(251,191,36,0.25)",
-                }}>$7 PREMIUM</span>
-              </div>
-
-              {sketchPreview ? (
-                <div style={{
-                  position: "relative", borderRadius: "10px", overflow: "hidden",
-                  border: `1px solid rgba(74,222,128,0.25)`,
-                }}>
-                  <img src={sketchPreview} alt="Sketch preview" style={{
-                    width: "100%", maxHeight: "200px", objectFit: "contain",
-                    background: "rgba(255,255,255,0.02)",
-                  }} />
-                  <button
-                    onClick={() => { setSketchFile(null); setSketchPreview(null); }}
-                    style={{
-                      position: "absolute", top: "8px", right: "8px",
-                      background: "rgba(0,0,0,0.7)", border: "none", color: "white",
-                      width: "28px", height: "28px", borderRadius: "50%",
-                      cursor: "pointer", fontSize: "14px", display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                    }}
-                  >{"\u2715"}</button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => sketchInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  style={{
-                    border: `1px dashed rgba(255,255,255,0.15)`, borderRadius: "10px",
-                    padding: "24px", textAlign: "center", cursor: "pointer",
-                    transition: "border-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = THEME.accent)}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)")}
-                >
-                  <div style={{ fontSize: "24px", marginBottom: "8px" }}>{"\uD83D\uDCC4"}</div>
-                  <p style={{ color: THEME.textMuted, fontSize: "13px", margin: 0 }}>
-                    Drop your hand-drawn sketch here, or click to browse
-                  </p>
-                  <p style={{ color: THEME.textDim, fontSize: "11px", margin: "4px 0 0" }}>
-                    Optional — enables enhanced design + realistic rendering
-                  </p>
-                </div>
-              )}
-              <input
-                ref={sketchInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => handleSketchSelect(e.target.files?.[0])}
-              />
-            </div>
-
             {/* Generate Button */}
             <button
               onClick={generateDesign}
@@ -794,14 +729,60 @@ export default function LandDesign() {
               ))}
             </ul>
 
-            {!sketchFile && (
-              <p style={{
-                fontSize: "12px", color: "#fbbf24", marginBottom: "16px",
-                fontFamily: THEME.fontMono,
-              }}>
-                Upload a sketch above first to enable the premium package
-              </p>
-            )}
+            {/* Sketch Upload */}
+            <div style={{ margin: "0 auto 20px", maxWidth: "400px" }}>
+              <label style={{
+                display: "block", fontFamily: THEME.fontMono, fontSize: "11px",
+                color: THEME.textDim, textTransform: "uppercase", letterSpacing: "2px",
+                marginBottom: "8px", textAlign: "left",
+              }}>Upload Your Sketch</label>
+              {sketchPreview ? (
+                <div style={{
+                  position: "relative", borderRadius: "10px", overflow: "hidden",
+                  border: `1px solid rgba(74,222,128,0.25)`,
+                }}>
+                  <img src={sketchPreview} alt="Sketch preview" style={{
+                    width: "100%", maxHeight: "200px", objectFit: "contain",
+                    background: "rgba(255,255,255,0.02)",
+                  }} />
+                  <button
+                    onClick={() => { setSketchFile(null); setSketchPreview(null); }}
+                    style={{
+                      position: "absolute", top: "8px", right: "8px",
+                      background: "rgba(0,0,0,0.7)", border: "none", color: "white",
+                      width: "28px", height: "28px", borderRadius: "50%",
+                      cursor: "pointer", fontSize: "14px", display: "flex",
+                      alignItems: "center", justifyContent: "center",
+                    }}
+                  >{"\u2715"}</button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => sketchInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  style={{
+                    border: `1px dashed rgba(255,255,255,0.15)`, borderRadius: "10px",
+                    padding: "20px", textAlign: "center", cursor: "pointer",
+                    transition: "border-color 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#fbbf24")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)")}
+                >
+                  <div style={{ fontSize: "24px", marginBottom: "8px" }}>{"\uD83D\uDCC4"}</div>
+                  <p style={{ color: THEME.textMuted, fontSize: "13px", margin: 0 }}>
+                    Drop your hand-drawn sketch here, or click to browse
+                  </p>
+                </div>
+              )}
+              <input
+                ref={sketchInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => handleSketchSelect(e.target.files?.[0])}
+              />
+            </div>
 
             <button
               onClick={handleGetPremium}
@@ -817,7 +798,7 @@ export default function LandDesign() {
                 transition: "all 0.2s",
               }}
             >
-              $7 — Get Full Package
+              {sketchFile ? "$7 — Get Full Package" : "Upload sketch to continue"}
             </button>
           </div>
         )}

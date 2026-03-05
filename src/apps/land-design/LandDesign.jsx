@@ -369,7 +369,7 @@ export default function LandDesign() {
 
   const handlePaidReport = async (oid) => {
     setPaidLoading(true);
-    setPaidStage("analyzing_sketch");
+    setPaidStage(sketchFile ? "analyzing_sketch" : "generating_report");
     setPaidError(null);
     setPaidReport(null);
     setPaidImage(null);
@@ -709,15 +709,15 @@ export default function LandDesign() {
               margin: "0 0 12px", color: THEME.text,
             }}>Get the Full Design Package</h3>
             <p style={{ color: THEME.textMuted, fontSize: "14px", lineHeight: 1.6, maxWidth: "400px", margin: "0 auto 20px" }}>
-              Upload your hand-drawn sketch and get an enhanced report with spatial analysis, a hi-res realistic rendering of your design, and a PDF report delivered to your email.
+              Get a hi-res realistic rendering of your land design, an enhanced permaculture report, and a PDF delivered to your email. Optionally upload a sketch or photo for spatial analysis.
             </p>
             <ul style={{
               listStyle: "none", padding: 0, margin: "0 auto 24px", maxWidth: "320px", textAlign: "left",
             }}>
               {[
-                "Sketch analysis with spatial recommendations",
                 "Hi-res realistic rendering of your design",
                 "Extended report with structures & considerations",
+                "Sketch analysis with spatial recommendations (if uploaded)",
                 "PDF report + email delivery",
               ].map((item, i) => (
                 <li key={i} style={{
@@ -735,7 +735,7 @@ export default function LandDesign() {
                 display: "block", fontFamily: THEME.fontMono, fontSize: "11px",
                 color: THEME.textDim, textTransform: "uppercase", letterSpacing: "2px",
                 marginBottom: "8px", textAlign: "left",
-              }}>Upload Your Sketch</label>
+              }}>Upload Your Sketch (Optional)</label>
               {sketchPreview ? (
                 <div style={{
                   position: "relative", borderRadius: "10px", overflow: "hidden",
@@ -786,19 +786,16 @@ export default function LandDesign() {
 
             <button
               onClick={handleGetPremium}
-              disabled={!sketchFile}
               style={{
                 padding: "14px 32px", border: "none", borderRadius: "10px",
                 fontFamily: THEME.fontBody, fontSize: "16px", fontWeight: 600,
-                cursor: sketchFile ? "pointer" : "not-allowed",
-                background: sketchFile
-                  ? "linear-gradient(135deg, #fbbf24, #f59e0b)"
-                  : "rgba(255,255,255,0.05)",
-                color: sketchFile ? "#000" : THEME.textDim,
+                cursor: "pointer",
+                background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+                color: "#000",
                 transition: "all 0.2s",
               }}
             >
-              {sketchFile ? "$7 — Get Full Package" : "Upload sketch to continue"}
+              $7 — Get Full Package
             </button>
           </div>
         )}

@@ -245,9 +245,30 @@ How this design achieves resilience in each pillar:
 // ─── Paid Tier Report Prompt (with sketch analysis) ─────────────────
 
 export function buildPaidReportPrompt(sketchAnalysis, siteData, location, description) {
+  const hasSketch = sketchAnalysis && sketchAnalysis !== "No sketch provided.";
   const system = buildSystemPrompt() + `\n\nThis is a PREMIUM report. Be thorough and detailed. Keep the total output to approximately 1200-1500 words.`;
 
-  const user = `Generate a detailed permaculture design report for this property. The owner has provided a hand-drawn sketch of their vision.
+  const sketchSection = hasSketch
+    ? `## Sketch Analysis (from the owner's hand-drawn design)\n${sketchAnalysis}`
+    : '';
+
+  const sketchIntro = hasSketch
+    ? 'The owner has provided a hand-drawn sketch of their vision.'
+    : 'No sketch was provided. Base all design recommendations on the site data, climate, and the owner\'s description.';
+
+  const designElementsInstr = hasSketch
+    ? 'Describe the key design elements visible in the sketch and how they work together as an integrated permaculture system. Reference zone placement rationale and spatial relationships from the sketch. (~200 words)'
+    : 'Propose key design elements based on the site data and owner\'s goals. Describe how they work together as an integrated permaculture system with zone placement rationale. (~200 words)';
+
+  const plantNotes = hasSketch ? ' Reference sketch positions.' : '';
+  const animalsInstr = hasSketch
+    ? 'Based on what the sketch shows plus climate-appropriate additions.'
+    : 'Climate-appropriate animals suited to the described property and owner\'s goals.';
+  const structuresInstr = hasSketch
+    ? 'Describe each structure\'s purpose, orientation recommendations, and integration with the overall design (passive solar, water catchment, etc.). Reference sketch layout.'
+    : 'Recommend structures with purpose, orientation, and integration with the overall design (passive solar, water catchment, etc.).';
+
+  const user = `Generate a detailed permaculture design report for this property. ${sketchIntro}
 
 ## Location
 ${location.displayName || 'Unknown location'}
@@ -256,8 +277,7 @@ Coordinates: ${location.lat}, ${location.lng}
 ## Owner's Description
 ${description}
 
-## Sketch Analysis (from the owner's hand-drawn design)
-${sketchAnalysis}
+${sketchSection}
 
 ## Site Data (auto-fetched)
 ${formatSiteDataForPrompt(siteData)}
@@ -271,18 +291,18 @@ Detailed description of the property location, climate zone, terrain, and soil (
 Mention the Köppen zone, annual rainfall, temperature range, frost risk, and how they influence the design.
 
 ### Design Elements
-Describe the key design elements visible in the sketch and how they work together as an integrated permaculture system. Reference zone placement rationale and spatial relationships from the sketch. (~200 words)
+${designElementsInstr}
 
 ### Plant List
 Table format: | Plant | Location | Function | Notes |
-Include trees, shrubs, groundcovers, herbs, and vegetables appropriate to this climate. Minimum 15 specific species with cultivar names. Reference sketch positions.
+Include trees, shrubs, groundcovers, herbs, and vegetables appropriate to this climate. Minimum 15 specific species with cultivar names.${plantNotes}
 
 ### Animals
 Table format: | Animal | Location | Role | Management Notes |
-Based on what the sketch shows plus climate-appropriate additions.
+${animalsInstr}
 
 ### Structures
-Describe each structure's purpose, orientation recommendations, and integration with the overall design (passive solar, water catchment, etc.). Reference sketch layout.
+${structuresInstr}
 
 ### Water Management
 Detailed water strategy: catchment area calculation, storage recommendations, distribution, grey water, drought resilience. Cite rainfall data.
@@ -300,4 +320,22 @@ How this design achieves resilience in each pillar:
 - **Water**: catchment, storage, grey water, drought resilience, water budget`;
 
   return { system, user };
+}
+
+// ─── Image Generation Prompt (no sketch) ─────────────────────────────
+
+export function buildImageGenerationPrompt(location, siteData, description) {
+  const climate = siteData?.koppen?.description || 'temperate';
+  const rainfall = siteData?.climate?.annual?.rainfall;
+  const elevation = siteData?.elevation?.elevation;
+  const soil = siteData?.soil?.textureClass || '';
+  const locationName = location?.displayName?.split(',')[0] || 'a rural property';
+
+  let vegetationHints = '';
+  if (rainfall && rainfall > 1200) vegetationHints = 'lush tropical or subtropical vegetation, dense canopy layers';
+  else if (rainfall && rainfall > 800) vegetationHints = 'abundant temperate vegetation, mixed fruit orchards, green meadows';
+  else if (rainfall && rainfall > 400) vegetationHints = 'Mediterranean-style plantings, drought-adapted fruit trees, herb spirals';
+  else vegetationHints = 'drought-resistant plantings, mulched beds, water-harvesting swales';
+
+  return `Photorealistic aerial drone photograph of a thriving permaculture property near ${locationName}. ${climate} climate${elevation ? `, ${elevation}m elevation` : ''}. The property features: ${description.slice(0, 300)}. Show mature, well-established plantings with ${vegetationHints}. Include visible permaculture elements: contour swales, diverse food forest layers, garden beds with companion planting, composting areas, rainwater collection, winding paths between zones, and natural building materials. Golden hour sunlight, vibrant green vegetation, rich ${soil || 'healthy'} soil visible in garden beds. Professional landscape photography style, inspiring and beautiful. No text or labels.`;
 }

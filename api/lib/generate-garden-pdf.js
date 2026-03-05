@@ -70,7 +70,7 @@ function parseSections(md) {
   return sections;
 }
 
-export default async function generateGardenPdf({ reportMarkdown, location, siteData, sketchAnalysis }) {
+export default async function generateGardenPdf({ reportMarkdown, location, siteData, sketchAnalysis, imageBase64 }) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -152,6 +152,26 @@ export default async function generateGardenPdf({ reportMarkdown, location, site
         .stroke();
 
       doc.moveDown(1);
+
+      // ── Design Visualization Image ────────────────────────────────
+
+      if (imageBase64) {
+        doc.addPage();
+        try {
+          const rawBase64 = imageBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
+          const imgBuffer = Buffer.from(rawBase64, "base64");
+          doc.image(imgBuffer, 50, 60, { width: pageWidth, fit: [pageWidth, 400], align: "center" });
+          const imgBottom = doc.y > 60 ? doc.y : 460;
+          doc
+            .font("Helvetica")
+            .fontSize(9)
+            .fillColor(COLORS.gray)
+            .text("AI-Generated Design Visualization", 50, imgBottom + 10, { width: pageWidth, align: "center" });
+          doc.moveDown(1);
+        } catch (imgErr) {
+          console.error("[generate-garden-pdf] Image embed error:", imgErr.message);
+        }
+      }
 
       // ── Report Body ─────────────────────────────────────────────────
 

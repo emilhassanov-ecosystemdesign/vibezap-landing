@@ -9,7 +9,7 @@ import { checkRateLimit, consumeOrder, cacheReport, getCachedReport } from "./li
 import { verifyOrder } from "./lib/verify-order.js";
 import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
 import { fetchAllSiteData, geocodeAddress } from "./lib/site-data-fetcher.js";
-import { SKETCH_ANALYSIS_PROMPT, buildPaidReportPrompt, formatSiteDataForPrompt } from "./lib/permaculture-prompts.js";
+import { SKETCH_ANALYSIS_PROMPT, buildPaidReportPrompt, buildImageGenerationPrompt, formatSiteDataForPrompt } from "./lib/permaculture-prompts.js";
 import generateGardenPdf from "./lib/generate-garden-pdf.js";
 
 const MAX_REQUESTS = 10;
@@ -219,31 +219,59 @@ export async function POST(request) {
 
         // Step 3: Generate realistic image (OpenAI gpt-image-1)
         let imageBase64 = null;
-        if (sketchBase64 && openaiKey) {
+        if (openaiKey) {
           sseEvent(controller, "progress", { stage: "generating_image", message: "Creating realistic rendering..." });
 
           try {
-            const imagePrompt = `Transform this hand-drawn permaculture site sketch into a photorealistic aerial photograph of a thriving permaculture property. Show mature plantings, garden beds, water features, and structures as they would look after 3-5 years of growth. Maintain the spatial layout from the sketch. Include lush vegetation, diverse plantings, natural materials, and a well-integrated landscape. The style should be a realistic drone photograph on a sunny day.`;
+            if (sketchBase64) {
+              // With sketch: use images/edits to transform sketch into realistic rendering
+              const imagePrompt = `Transform this hand-drawn permaculture site sketch into a photorealistic aerial photograph of a thriving permaculture property. Show mature plantings, garden beds, water features, and structures as they would look after 3-5 years of growth. Maintain the spatial layout from the sketch. Include lush vegetation, diverse plantings, natural materials, and a well-integrated landscape. The style should be a realistic drone photograph on a sunny day.`;
 
-            // Use OpenAI images API with the sketch as reference
-            const mediaTypeMatch = sketchBase64.match(/^data:(image\/[a-zA-Z+]+);base64,/);
-            const base64Data = sketchBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
+              const mediaTypeMatch = sketchBase64.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+              const base64Data = sketchBase64.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
 
-            const imgResponse = await fetch("https://api.openai.com/v1/images/edits", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${openaiKey}`,
-              },
-              body: await buildImageFormData(base64Data, mediaTypeMatch?.[1] || "image/png", imagePrompt),
-            });
+              const imgResponse = await fetch("https://api.openai.com/v1/images/edits", {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${openaiKey}` },
+                body: await buildImageFormData(base64Data, mediaTypeMatch?.[1] || "image/png", imagePrompt),
+              });
 
-            if (imgResponse.ok) {
-              const imgData = await imgResponse.json();
-              if (imgData.data?.[0]?.b64_json) {
-                imageBase64 = `data:image/png;base64,${imgData.data[0].b64_json}`;
+              if (imgResponse.ok) {
+                const imgData = await imgResponse.json();
+                if (imgData.data?.[0]?.b64_json) {
+                  imageBase64 = `data:image/png;base64,${imgData.data[0].b64_json}`;
+                }
+              } else {
+                console.error("[land-design-report] Image edit failed:", imgResponse.status);
               }
             } else {
-              console.error("[land-design-report] Image generation failed:", imgResponse.status);
+              // Without sketch: use images/generations with descriptive prompt
+              const imagePrompt = buildImageGenerationPrompt(location, siteData, description.trim());
+
+              const imgResponse = await fetch("https://api.openai.com/v1/images/generations", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${openaiKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "gpt-image-1",
+                  prompt: imagePrompt,
+                  size: "1536x1024",
+                  quality: "high",
+                  response_format: "b64_json",
+                  n: 1,
+                }),
+              });
+
+              if (imgResponse.ok) {
+                const imgData = await imgResponse.json();
+                if (imgData.data?.[0]?.b64_json) {
+                  imageBase64 = `data:image/png;base64,${imgData.data[0].b64_json}`;
+                }
+              } else {
+                console.error("[land-design-report] Image generation failed:", imgResponse.status);
+              }
             }
           } catch (imgErr) {
             console.error("[land-design-report] Image generation error:", imgErr.message);
@@ -264,6 +292,7 @@ export async function POST(request) {
             location,
             siteData,
             sketchAnalysis: sketchBase64 ? sketchAnalysis : null,
+            imageBase64,
           });
           pdfBase64 = pdfBuffer.toString("base64");
           sseEvent(controller, "pdf", { pdfBase64, pdfFilename });

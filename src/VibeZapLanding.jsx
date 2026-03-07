@@ -299,7 +299,7 @@ export default function VibeZapLanding() {
       icon: "\uD83C\uDF31",
       title: "Land Design Generator",
       description: "Enter your location and describe your land. Get an AI-powered permaculture design with plant lists, water management, and implementation timeline.",
-      price: "Free / $7 full package",
+      price: "Free",
       tag: "Live",
       tagColor: "#4ade80",
       link: "/land-design",

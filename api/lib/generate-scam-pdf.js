@@ -67,14 +67,16 @@ function drawSectionHeader(doc, title, y) {
     .fillColor(COLORS.accent)
     .text(title.toUpperCase(), 50, y);
 
+  doc.save();
   doc
     .moveTo(50, y + 16)
     .lineTo(200, y + 16)
     .strokeColor(COLORS.accent)
     .lineWidth(1.5)
     .stroke();
+  doc.restore();
 
-  return y + 28;
+  return y + 32;
 }
 
 function drawWrappedText(doc, text, x, y, options = {}) {
@@ -158,12 +160,14 @@ export default function generateScamPdf(data) {
         });
 
       // Divider
+      doc.save();
       doc
         .moveTo(50, 110)
         .lineTo(50 + pageWidth, 110)
         .strokeColor(COLORS.border)
         .lineWidth(0.5)
         .stroke();
+      doc.restore();
 
       // Verdict badge
       const verdictColor = getVerdictColor(data.verdict);
@@ -307,6 +311,7 @@ export default function generateScamPdf(data) {
         // Score bar
         const barWidth = pageWidth;
         const barHeight = 5;
+        doc.save();
         doc
           .rect(50, y, barWidth, barHeight)
           .fillColor("#eeeeee")
@@ -315,8 +320,9 @@ export default function generateScamPdf(data) {
           .rect(50, y, barWidth * (catScore / 10), barHeight)
           .fillColor(catColor)
           .fill();
+        doc.restore();
 
-        y += 12;
+        y += 14;
 
         // Detailed analysis
         const analysis =
@@ -326,7 +332,7 @@ export default function generateScamPdf(data) {
           color: COLORS.gray,
           lineGap: 2,
         });
-        y = doc.y + 12;
+        y = doc.y + 20;
       }
 
       // ── PAGE 3: Forensic Details ──
@@ -346,12 +352,12 @@ export default function generateScamPdf(data) {
           .font("Helvetica-Bold")
           .fillColor(COLORS.black)
           .text("URL & Link Analysis", 50, y);
-        y = doc.y + 4;
+        y = doc.y + 8;
         y = drawWrappedText(doc, tech.url_analysis, 50, y, {
           fontSize: 9,
           color: COLORS.gray,
         });
-        y = doc.y + 10;
+        y = doc.y + 14;
       }
 
       if (tech.language_patterns) {
@@ -362,12 +368,12 @@ export default function generateScamPdf(data) {
           .font("Helvetica-Bold")
           .fillColor(COLORS.black)
           .text("Language Pattern Analysis", 50, y);
-        y = doc.y + 4;
+        y = doc.y + 8;
         y = drawWrappedText(doc, tech.language_patterns, 50, y, {
           fontSize: 9,
           color: COLORS.gray,
         });
-        y = doc.y + 10;
+        y = doc.y + 14;
       }
 
       if (tech.social_engineering?.length) {
@@ -387,9 +393,62 @@ export default function generateScamPdf(data) {
             color: COLORS.gray,
             width: 489,
           });
-          y = doc.y + 3;
+          y = doc.y + 6;
         }
-        y = doc.y + 8;
+        y = doc.y + 10;
+      }
+
+      // Immediate actions (risk-specific)
+      if (data.immediate_actions?.length) {
+        ensureSpace(doc, 80, pageCounter);
+        y = doc.y;
+        y = drawSectionHeader(doc, "Immediate Actions", y);
+        for (const item of data.immediate_actions) {
+          ensureSpace(doc, 40, pageCounter);
+          y = doc.y;
+          const priority = (item.priority || "").toUpperCase();
+          const priorityColor =
+            priority === "HIGH"
+              ? COLORS.definiteScam
+              : priority === "MEDIUM"
+                ? COLORS.suspicious
+                : COLORS.safe;
+
+          // Priority badge
+          const badgeText = priority || "ACTION";
+          const badgeW = doc
+            .fontSize(7)
+            .font("Helvetica-Bold")
+            .widthOfString(badgeText) + 10;
+          doc.save();
+          doc
+            .roundedRect(50, y, badgeW, 14, 3)
+            .fillColor(priorityColor)
+            .fill();
+          doc.restore();
+          doc
+            .fontSize(7)
+            .font("Helvetica-Bold")
+            .fillColor("#ffffff")
+            .text(badgeText, 55, y + 3, { lineBreak: false });
+
+          // Action text
+          y += 20;
+          y = drawWrappedText(doc, item.action || "", 50, y, {
+            fontSize: 9,
+            font: "Helvetica-Bold",
+            color: COLORS.black,
+          });
+          if (item.reason) {
+            y = doc.y + 2;
+            y = drawWrappedText(doc, item.reason, 50, y, {
+              fontSize: 8,
+              color: COLORS.gray,
+            });
+          }
+          y = doc.y + 12;
+        }
+        y = doc.y + 6;
       }
 
       // Similar scam patterns
@@ -398,16 +457,16 @@ export default function generateScamPdf(data) {
         y = doc.y;
         y = drawSectionHeader(doc, "Similar Known Scam Patterns", y);
         for (const pattern of data.similar_scam_patterns) {
-          ensureSpace(doc, 16, pageCounter);
+          ensureSpace(doc, 20, pageCounter);
           y = doc.y;
           y = drawWrappedText(doc, `•  ${pattern}`, 56, y, {
             fontSize: 9,
             color: COLORS.gray,
             width: 489,
           });
-          y = doc.y + 3;
+          y = doc.y + 6;
         }
-        y = doc.y + 8;
+        y = doc.y + 10;
       }
 
       // How to report
@@ -425,12 +484,12 @@ export default function generateScamPdf(data) {
             .font("Helvetica-Bold")
             .fillColor(COLORS.accent)
             .text(`${authority}${url}`, 50, y);
-          y = doc.y + 2;
+          y = doc.y + 4;
           y = drawWrappedText(doc, report.description || "", 50, y, {
             fontSize: 9,
             color: COLORS.gray,
           });
-          y = doc.y + 8;
+          y = doc.y + 12;
         }
       }
 
@@ -447,7 +506,7 @@ export default function generateScamPdf(data) {
             color: COLORS.darkGray,
             lineGap: 2,
           });
-          y = doc.y + 5;
+          y = doc.y + 8;
         });
       }
 

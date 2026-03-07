@@ -95,6 +95,9 @@ Same as above PLUS:
     "language_patterns": "Paragraph about tone, formality, inconsistencies...",
     "social_engineering": ["Technique 1", "Technique 2"]
   },
+  "immediate_actions": [
+    { "priority": "HIGH", "action": "Specific step tied to risk found", "reason": "Why this matters for this message" }
+  ],
   "similar_scam_patterns": ["Known scam type 1 with description", "Known scam type 2"],
   "how_to_report": [
     { "authority": "FTC", "url": "reportfraud.ftc.gov", "description": "When and how to report" },

@@ -87,6 +87,10 @@ Return ONLY a JSON object (no markdown, no backticks) with this exact structure:
     "language_patterns": "<paragraph about language tone, formality, inconsistencies>",
     "social_engineering": ["<technique 1>", "<technique 2>"]
   },
+  "immediate_actions": [
+    { "priority": "HIGH|MEDIUM|LOW", "action": "<specific step to take NOW, directly tied to a risk found in this message>", "reason": "<one sentence explaining why this matters for THIS specific message>" },
+    { "priority": "...", "action": "...", "reason": "..." }
+  ],
   "similar_scam_patterns": ["<known scam type 1 with brief description>", "<known scam type 2>"],
   "how_to_report": [
     { "authority": "FTC", "url": "reportfraud.ftc.gov", "description": "<when and how to report>" },
@@ -95,6 +99,10 @@ Return ONLY a JSON object (no markdown, no backticks) with this exact structure:
   ],
   "protection_tips": ["<tip 1>", "<tip 2>", "<tip 3>", "<tip 4>", "<tip 5>"]
 }
+
+IMPORTANT RULES:
+- "immediate_actions": Provide 3-5 prioritized actions. Each MUST be specific to the risks found in THIS message. Do NOT give generic advice like "enable 2FA" or "don't click links" unless the message actually contains links or credential risks. Tie each action to a concrete finding.
+- "protection_tips": Each tip MUST relate to the specific scam type or risk patterns identified in this message. No generic security advice. If the message appears safe, provide tips for recognizing when similar-looking messages ARE scams.
 
 Be thorough and accurate. Provide real, actionable analysis. Respond with ONLY the JSON.`;
 

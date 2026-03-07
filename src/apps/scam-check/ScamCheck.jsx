@@ -1216,6 +1216,66 @@ export default function ScamCheck() {
                     </div>
                   )}
 
+                  {/* Immediate Actions */}
+                  {reportData.analysis?.immediate_actions?.length > 0 && (
+                    <div style={{
+                      background: "linear-gradient(135deg, rgba(239,68,68,0.06), rgba(249,115,22,0.04))",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: "20px", padding: "32px 28px", marginBottom: "24px",
+                    }}>
+                      <h3 style={{
+                        fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                        textTransform: "uppercase", letterSpacing: "3px",
+                        color: "rgba(255,255,255,0.35)", marginBottom: "24px",
+                      }}>
+                        {"\u26A1"} Immediate Actions
+                      </h3>
+                      {reportData.analysis.immediate_actions.map((item, i) => {
+                        const priority = (item.priority || "").toUpperCase();
+                        const priorityColors = {
+                          HIGH: { bg: "rgba(239,68,68,0.15)", border: "rgba(239,68,68,0.3)", text: "#ef4444" },
+                          MEDIUM: { bg: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.3)", text: "#fbbf24" },
+                          LOW: { bg: "rgba(74,222,128,0.15)", border: "rgba(74,222,128,0.3)", text: "#4ade80" },
+                        };
+                        const pc = priorityColors[priority] || priorityColors.MEDIUM;
+                        return (
+                          <div key={i} style={{
+                            background: "rgba(255,255,255,0.02)",
+                            border: "1px solid rgba(255,255,255,0.05)",
+                            borderRadius: "12px", padding: "20px",
+                            marginBottom: i < reportData.analysis.immediate_actions.length - 1 ? "12px" : 0,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                              <span style={{
+                                fontSize: "10px", fontWeight: 700, fontFamily: "'Space Mono', monospace",
+                                padding: "3px 8px", borderRadius: "4px",
+                                background: pc.bg, border: `1px solid ${pc.border}`, color: pc.text,
+                                textTransform: "uppercase", letterSpacing: "1px",
+                              }}>
+                                {priority}
+                              </span>
+                            </div>
+                            <p style={{
+                              fontFamily: "'Outfit', sans-serif", fontSize: "14px",
+                              color: "rgba(255,255,255,0.85)", lineHeight: 1.6, margin: "0 0 4px 0",
+                              fontWeight: 600,
+                            }}>
+                              {item.action}
+                            </p>
+                            {item.reason && (
+                              <p style={{
+                                fontFamily: "'Outfit', sans-serif", fontSize: "12px",
+                                color: "rgba(255,255,255,0.45)", lineHeight: 1.5, margin: 0,
+                              }}>
+                                {item.reason}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Similar Scam Patterns */}
                   {reportData.analysis?.similar_scam_patterns?.length > 0 && (
                     <div style={{

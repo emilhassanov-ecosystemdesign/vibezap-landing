@@ -1,0 +1,38 @@
+# ============================================================
+# Permaculture Sketch Enhancer — Server Configuration
+# ============================================================
+# Edit prompts, model, and generation params here.
+# Restart the container after changes.
+# ============================================================
+
+model:
+  # HuggingFace model ID (auto-downloaded on first run)
+  checkpoint: "Lykon/dreamshaper-8"
+
+controlnet:
+  # Preprocessor: "lineart" (clean lines) or "scribble_hed" (rough sketches)
+  preprocessor: "lineart"
+  # Conditioning strength: 0.0 (ignore sketch) → 1.0 (strict adherence)
+  strength: 0.75
+
+prompt:
+  positive: >-
+    aerial permaculture farm concept art,
+    watercolor wash illustration, architectural sketch style,
+    warm earth tones, lush greens, professional landscape design,
+    food forest canopy layers, swales and berms, keyline water channels,
+    companion planting beds, natural building materials,
+    high detail, sharp focus, masterpiece quality
+
+  negative: >-
+    low quality, blurry, distorted, deformed, ugly, noise,
+    oversaturated, photographic, 3d render, cartoon, anime,
+    text, watermark, signature, frame, border,
+    extra limbs, extra fingers, mutated, disfigured
+
+generation:
+  steps: 30
+  guidance_scale: 7.5
+  width: 768
+  height: 768
+  seed: -1

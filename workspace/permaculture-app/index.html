@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permaculture Design Generator</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+<header class="header">
+  <img class="header-logo" src="assets/logo.png" alt="Permaculture Design Generator">
+  <h1>Permaculture Design Generator</h1>
+  <p>Transform your sketch into a complete permaculture design</p>
+</header>
+
+<main class="main">
+  <!-- Input Card -->
+  <div class="input-card">
+    <div class="input-section">
+      <label class="input-label">Location <small>Enter address or coordinates</small></label>
+      <div class="location-row">
+        <input type="text" class="location-input" id="locationInput" placeholder="e.g. Carmarthen, Wales, UK" autocomplete="off">
+        <button class="search-btn" id="searchBtn" title="Search location">&#128269;</button>
+      </div>
+      <div class="location-badge" id="locationBadge">
+        <span class="checkmark">&#10003;</span>
+        <span id="locationName"></span>
+      </div>
+      <div class="location-error" id="locationError"></div>
+    </div>
+
+    <div class="input-section">
+      <label class="input-label">Site Sketch <small>Hand-drawn plan of your property</small></label>
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-content">
+          <div class="dropzone-icon">&#128196;</div>
+          <div class="dropzone-text">Drop your sketch here or <strong>click to browse</strong></div>
+          <div class="dropzone-hint">JPG, PNG, or WEBP &middot; Max 10 MB</div>
+        </div>
+        <div class="dropzone-preview">
+          <img id="previewImg" alt="Sketch preview">
+          <button class="remove-btn" id="removeBtn" title="Remove">&times;</button>
+        </div>
+      </div>
+      <input type="file" class="file-input" id="fileInput" accept=".jpg,.jpeg,.png,.webp">
+    </div>
+
+    <button class="generate-btn" id="generateBtn" disabled>
+      <span class="spinner"></span>
+      <span class="btn-text">Generate Design</span>
+    </button>
+  </div>
+
+  <!-- Results Section -->
+  <section class="results" id="results">
+    <div class="progress-steps" id="progressSteps">
+      <div class="step-badge" data-step="analysis"><span class="step-icon">1</span> Analyzing</div>
+      <div class="step-badge" data-step="report"><span class="step-icon">2</span> Report</div>
+    </div>
+
+    <div class="report-card">
+      <div class="report-card-header">&#128220; Design Report</div>
+      <div class="report-content" id="reportContent"></div>
+      <div class="report-error" id="reportError"></div>
+    </div>
+
+    <div class="new-design-section" id="newDesignSection">
+      <button class="new-design-btn" id="newDesignBtn">Start New Design</button>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  Powered by AI &middot; Learn more at <a href="https://www.ecosystem.design" target="_blank" rel="noopener">ecosystem.design</a>
+</footer>
+
+<script>
+// Base URL for API calls (works behind reverse proxies like /proxy/3002)
+const BASE = window.location.pathname.replace(/\/?$/, '/');
+function apiUrl(path) { return BASE + path; }
+
+// State
+let locationData = null;
+let siteData = null;
+let sketchFilename = null;
+let isGenerating = false;
+
+// DOM Refs
+const $ = id => document.getElementById(id);
+const locationInput = $('locationInput');
+const searchBtn = $('searchBtn');
+const locationBadge = $('locationBadge');
+const locationName = $('locationName');
+const locationError = $('locationError');
+const dropzone = $('dropzone');
+const fileInput = $('fileInput');
+const previewImg = $('previewImg');
+const removeBtn = $('removeBtn');
+const generateBtn = $('generateBtn');
+const results = $('results');
+const reportContent = $('reportContent');
+
+// Location Search
+async function searchLocation() {
+  const address = locationInput.value.trim();
+  if (!address) return;
+
+  searchBtn.disabled = true;
+  locationBadge.classList.remove('visible');
+  locationError.classList.remove('visible');
+
+  try {
+    const res = await fetch(apiUrl(`api/geocode?address=${encodeURIComponent(address)}`));
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    locationData = { lat: data.lat, lng: data.lng, displayName: data.displayName || address };
+    locationName.textContent = locationData.displayName;
+    locationBadge.classList.add('visible');
+    updateGenerateBtn();
+
+    // Fetch site data silently
+    fetch(apiUrl(`api/site-data?lat=${data.lat}&lng=${data.lng}`))
+      .then(r => r.json())
+      .then(d => { if (!d.error) siteData = d; })
+      .catch(() => {});
+  } catch (e) {
+    locationError.textContent = e.message || 'Could not find location. Try a more specific address.';
+    locationError.classList.add('visible');
+    locationData = null;
+    updateGenerateBtn();
+  } finally {
+    searchBtn.disabled = false;
+  }
+}
+
+searchBtn.addEventListener('click', searchLocation);
+locationInput.addEventListener('keydown', e => { if (e.key === 'Enter') searchLocation(); });
+
+// File Upload with Client-Side Resize
+function resizeImage(file, maxEdge = 2048) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= maxEdge && height <= maxEdge) { resolve(file); return; }
+      const scale = maxEdge / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  const valid = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!valid.includes(file.type)) { alert('Please upload a JPG, PNG, or WEBP image.'); return; }
+  if (file.size > 10 * 1024 * 1024) { alert('File too large. Maximum 10 MB.'); return; }
+
+  // Show preview immediately
+  previewImg.src = URL.createObjectURL(file);
+  dropzone.classList.add('has-preview');
+
+  // Resize and upload
+  const resized = await resizeImage(file);
+  const fd = new FormData();
+  fd.append('sketch', resized, file.name);
+
+  try {
+    const res = await fetch(apiUrl('api/upload-sketch'), { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    sketchFilename = data.filename;
+    updateGenerateBtn();
+  } catch (e) {
+    alert('Upload failed: ' + (e.message || 'Unknown error'));
+    clearSketch();
+  }
+}
+
+function clearSketch() {
+  sketchFilename = null;
+  dropzone.classList.remove('has-preview');
+  previewImg.src = '';
+  fileInput.value = '';
+  updateGenerateBtn();
+}
+
+dropzone.addEventListener('click', e => { if (!e.target.closest('.remove-btn')) fileInput.click(); });
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+removeBtn.addEventListener('click', e => { e.stopPropagation(); clearSketch(); });
+
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+// Generate Button State
+function updateGenerateBtn() {
+  generateBtn.disabled = !(locationData && sketchFilename) || isGenerating;
+}
+
+// Generation Pipeline (SSE via fetch + ReadableStream)
+function setStep(step, state) {
+  const badge = document.querySelector(`.step-badge[data-step="${step}"]`);
+  if (badge) { badge.className = `step-badge ${state}`; }
+}
+
+async function runGenerate(force = false) {
+  if (isGenerating || !locationData || !sketchFilename) return;
+  isGenerating = true;
+  generateBtn.classList.add('loading');
+  generateBtn.querySelector('.btn-text').textContent = 'Generating...';
+  updateGenerateBtn();
+
+  // Reset results
+  results.classList.add('visible');
+  $('newDesignSection').classList.remove('visible');
+  reportContent.innerHTML = '';
+  $('reportError').classList.remove('visible');
+  document.querySelectorAll('.step-badge').forEach(b => b.className = 'step-badge');
+  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  let reportMarkdown = '';
+
+  try {
+    const response = await fetch(apiUrl('api/generate'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ location: locationData, siteData: siteData || {}, sketchFilename, force })
+    });
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      let currentEvent = null;
+      for (const line of lines) {
+        if (line.startsWith('event: ')) { currentEvent = line.slice(7).trim(); }
+        else if (line.startsWith('data: ') && currentEvent) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            handleEvent(currentEvent, data);
+          } catch (e) { /* ignore parse errors */ }
+          currentEvent = null;
+        }
+      }
+    }
+  } catch (e) {
+    reportContent.innerHTML = `<div class="report-error visible">Connection error: ${e.message}</div>`;
+  }
+
+  isGenerating = false;
+  generateBtn.classList.remove('loading');
+  generateBtn.querySelector('.btn-text').textContent = 'Generate Design';
+  updateGenerateBtn();
+
+  function handleEvent(event, data) {
+    switch (event) {
+      case 'status':
+        if (data.step) setStep(data.step, 'active');
+        break;
+      case 'analysis_complete':
+        setStep('analysis', 'done');
+        break;
+      case 'report_chunk':
+        reportMarkdown += data.text;
+        reportContent.innerHTML = marked.parse(reportMarkdown.replace(/~~([^~]+)~~/g, '$1')) + '<span class="report-cursor"></span>';
+        break;
+      case 'report_complete':
+        setStep('report', 'done');
+        reportContent.innerHTML = marked.parse(reportMarkdown.replace(/~~([^~]+)~~/g, '$1'))
+          + '<div class="report-attribution">Design insights by <a href="https://www.ecosystem.design" target="_blank" rel="noopener">ecosystem.design</a></div>';
+        break;
+      case 'report_error':
+        setStep('report', 'error');
+        $('reportError').textContent = data.message;
+        $('reportError').classList.add('visible');
+        break;
+      case 'cache_hit':
+        document.querySelectorAll('.step-badge').forEach(b => b.className = 'step-badge done');
+        break;
+      case 'generation_complete':
+        $('newDesignSection').classList.add('visible');
+        break;
+      case 'analysis_error':
+        setStep('analysis', 'error');
+        reportContent.innerHTML = `<div class="report-error visible">Sketch analysis failed: ${data.message}</div>`;
+        break;
+      case 'error':
+        document.querySelectorAll('.step-badge.active').forEach(b => {
+          b.className = b.className.replace('active', 'error');
+        });
+        reportContent.innerHTML = `<div class="report-error visible">${data.message}</div>`;
+        break;
+    }
+  }
+}
+
+generateBtn.addEventListener('click', () => runGenerate(false));
+
+// New Design Reset
+$('newDesignBtn').addEventListener('click', () => {
+  locationData = null; siteData = null; sketchFilename = null;
+  locationInput.value = '';
+  locationBadge.classList.remove('visible');
+  clearSketch();
+  results.classList.remove('visible');
+  $('newDesignSection').classList.remove('visible');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
+
+</body>
+</html>

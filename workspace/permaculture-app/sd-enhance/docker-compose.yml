@@ -1,0 +1,28 @@
+services:
+  sd-enhance:
+    build: .
+    ports:
+      # Localhost only — not publicly exposed. The Node.js app on :3002
+      # calls this internally during generation.
+      - "127.0.0.1:${SD_PORT:-7860}:8000"
+    volumes:
+      # Persist HuggingFace model cache across restarts (~4 GB)
+      - hf-cache:/root/.cache/huggingface
+      # Persist generated images on host
+      - ./outputs:/app/outputs
+    environment:
+      - HF_HOME=/root/.cache/huggingface
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 7G
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  hf-cache:

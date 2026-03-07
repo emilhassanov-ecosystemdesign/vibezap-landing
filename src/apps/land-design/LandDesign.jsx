@@ -151,37 +151,15 @@ export default function LandDesign() {
   const [reportMarkdown, setReportMarkdown] = useState("");
   const [reportComplete, setReportComplete] = useState(false);
 
-  // Payment state
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [orderCompleted, setOrderCompleted] = useState(false);
-  const [popupBlocked, setPopupBlocked] = useState(false);
-  const [pollingTimedOut, setPollingTimedOut] = useState(false);
-
-  // Paid report state
-  const [sketchFile, setSketchFile] = useState(null);
-  const [sketchPreview, setSketchPreview] = useState(null);
-  const [paidLoading, setPaidLoading] = useState(false);
-  const [paidStage, setPaidStage] = useState("");
-  const [paidReport, setPaidReport] = useState(null);
-  const [paidImage, setPaidImage] = useState(null);
-  const [paidError, setPaidError] = useState(null);
-  const [emailStatus, setEmailStatus] = useState(null);
-
   const resultRef = useRef(null);
-  const paidResultRef = useRef(null);
-  const orderIdRef = useRef(null);
-  const pollIntervalRef = useRef(null);
-  const checkoutOpenedAtRef = useRef(null);
-  const sketchInputRef = useRef(null);
-  const checkoutUrlRef = useRef("https://vibezap.lemonsqueezy.com/checkout/buy/153489b8-8e44-4c27-8aed-574ef672b880");
 
   // Meta tags
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = "Land Design Generator \u2014 AI Permaculture Design | VibeZap";
+    document.title = "Land Design Generator \u2014 Free AI Permaculture Design | VibeZap";
 
-    const desc = "Enter your location and describe your land. Get an AI-powered permaculture design with plant recommendations, water management, and implementation timeline.";
-    const title = "Land Design Generator \u2014 AI Permaculture Design | VibeZap";
+    const desc = "Enter your location and describe your land. Get a free AI-powered permaculture design with plant recommendations, water management, and implementation timeline.";
+    const title = "Land Design Generator \u2014 Free AI Permaculture Design | VibeZap";
     const metaUpdates = [
       ["meta[name='description']", desc],
       ["meta[property='og:title']", title],
@@ -204,81 +182,6 @@ export default function LandDesign() {
     };
   }, []);
 
-  // Payment polling
-  const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
-
-  const startPaymentPolling = () => {
-    stopPolling();
-    setPollingTimedOut(false);
-    const afterTs = new Date().toISOString();
-    checkoutOpenedAtRef.current = afterTs;
-    let attempts = 0;
-    const maxAttempts = 60;
-
-    pollIntervalRef.current = setInterval(async () => {
-      attempts++;
-      if (attempts > maxAttempts) {
-        stopPolling();
-        setPollingTimedOut(true);
-        return;
-      }
-      try {
-        const resp = await fetch(`/api/check-payment?product=land&after=${encodeURIComponent(afterTs)}`);
-        const data = await resp.json();
-        if (data.found && data.orderId) {
-          stopPolling();
-          setOrderCompleted(true);
-          setPaymentProcessing(false);
-          setPopupBlocked(false);
-          orderIdRef.current = String(data.orderId);
-          handlePaidReport(String(data.orderId));
-        }
-      } catch (_) {}
-    }, 3000);
-  };
-
-  const checkPaymentNow = async () => {
-    const afterTs = checkoutOpenedAtRef.current || new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    try {
-      const resp = await fetch(`/api/check-payment?product=land&after=${encodeURIComponent(afterTs)}`);
-      const data = await resp.json();
-      if (data.found && data.orderId) {
-        stopPolling();
-        setOrderCompleted(true);
-        setPaymentProcessing(false);
-        setPopupBlocked(false);
-        orderIdRef.current = String(data.orderId);
-        handlePaidReport(String(data.orderId));
-      }
-    } catch (_) {}
-  };
-
-  useEffect(() => () => stopPolling(), []);
-
-  // Sketch file handling
-  const handleSketchSelect = (file) => {
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setError("Sketch image too large (max 10MB)");
-      return;
-    }
-    setSketchFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setSketchPreview(e.target.result);
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith("image/")) handleSketchSelect(file);
-  };
-
   // ─── Free report generation (SSE) ────────────────────────────────
 
   const generateDesign = async () => {
@@ -291,13 +194,6 @@ export default function LandDesign() {
     setSiteData(null);
     setReportMarkdown("");
     setReportComplete(false);
-    setPaymentProcessing(false);
-    setPaidReport(null);
-    setPaidImage(null);
-    setPaidError(null);
-    setEmailStatus(null);
-    setOrderCompleted(false);
-    orderIdRef.current = null;
 
     try {
       const response = await fetch("/api/land-design", {
@@ -365,133 +261,6 @@ export default function LandDesign() {
     }
   };
 
-  // ─── Paid report generation (SSE) ────────────────────────────────
-
-  const handlePaidReport = async (oid) => {
-    setPaidLoading(true);
-    setPaidStage(sketchFile ? "analyzing_sketch" : "generating_report");
-    setPaidError(null);
-    setPaidReport(null);
-    setPaidImage(null);
-    setEmailStatus(null);
-
-    try {
-      // Convert sketch to base64
-      let sketchBase64 = null;
-      if (sketchFile) {
-        sketchBase64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(sketchFile);
-        });
-      }
-
-      const response = await fetch("/api/land-design-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: address.trim(),
-          description: description.trim(),
-          sketchBase64,
-          siteData,
-          location,
-          orderId: oid,
-        }),
-      });
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || "Failed to generate premium report");
-      }
-
-      // Read SSE stream
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        let currentEvent = null;
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith("data: ") && currentEvent) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              switch (currentEvent) {
-                case "progress":
-                  setPaidStage(data.stage);
-                  break;
-                case "report":
-                  setPaidReport(data.reportMarkdown);
-                  break;
-                case "image":
-                  setPaidImage(data.imageBase64);
-                  break;
-                case "pdf": {
-                  // Auto-download PDF
-                  const binaryString = atob(data.pdfBase64);
-                  const bytes = new Uint8Array(binaryString.length);
-                  for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                  }
-                  const blob = new Blob([bytes], { type: "application/pdf" });
-                  const blobUrl = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = blobUrl;
-                  a.download = data.pdfFilename || "land-design-report.pdf";
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(blobUrl);
-                  break;
-                }
-                case "email":
-                  setEmailStatus(data);
-                  break;
-                case "error":
-                  throw new Error(data.error);
-              }
-            } catch (parseErr) {
-              if (parseErr.message && !parseErr.message.includes("JSON")) throw parseErr;
-            }
-            currentEvent = null;
-          }
-        }
-      }
-
-      setTimeout(() => paidResultRef.current?.scrollIntoView({ behavior: "smooth" }), 400);
-    } catch (err) {
-      setPaidError(err.message || "Something went wrong generating your premium report.");
-    } finally {
-      setPaidLoading(false);
-    }
-  };
-
-  const handleGetPremium = () => {
-    setPaymentProcessing(true);
-    setPaidError(null);
-    setPopupBlocked(false);
-    setPollingTimedOut(false);
-
-    const win = window.open(checkoutUrlRef.current, "_blank");
-    if (!win) setPopupBlocked(true);
-    startPaymentPolling();
-  };
-
-  const handleCancelPayment = () => {
-    stopPolling();
-    setPaymentProcessing(false);
-    setPopupBlocked(false);
-    setPollingTimedOut(false);
-  };
-
   const handleStartOver = () => {
     setAddress("");
     setDescription("");
@@ -500,25 +269,7 @@ export default function LandDesign() {
     setReportMarkdown("");
     setReportComplete(false);
     setError(null);
-    setSketchFile(null);
-    setSketchPreview(null);
-    setPaidReport(null);
-    setPaidImage(null);
-    setPaidError(null);
-    setEmailStatus(null);
-    setPaymentProcessing(false);
-    setOrderCompleted(false);
-    orderIdRef.current = null;
     window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const paidStageMessages = {
-    analyzing_sketch: "Analyzing your sketch...",
-    generating_report: "Generating enhanced design report...",
-    generating_image: "Creating realistic rendering... (this may take up to 60 seconds)",
-    generating_pdf: "Building your PDF report...",
-    sending_email: "Sending to your inbox...",
-    cached: "Loading your report...",
   };
 
   // ─── Render ───────────────────────────────────────────────────────
@@ -560,7 +311,7 @@ export default function LandDesign() {
           Land Design Generator
         </h1>
         <p style={{ color: THEME.textMuted, fontSize: "16px", lineHeight: 1.6, maxWidth: "500px", margin: "0 auto" }}>
-          Describe your land and get an AI-powered permaculture design with plant lists, water management, and implementation timeline.
+          Describe your land and get a free AI-powered permaculture design with plant lists, water management, and implementation timeline.
         </p>
       </div>
 
@@ -635,7 +386,7 @@ export default function LandDesign() {
                 transition: "all 0.2s",
               }}
             >
-              {loading ? "Generating..." : "Generate Design"}
+              {loading ? "Generating..." : "Generate Free Design"}
             </button>
 
             {error && (
@@ -692,260 +443,24 @@ export default function LandDesign() {
                 Generating...
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── Premium Upgrade CTA ── */}
-        {reportComplete && !orderCompleted && !paymentProcessing && (
-          <div style={{
-            marginTop: "32px", background: THEME.surface,
-            border: `1px solid rgba(251,191,36,0.25)`,
-            borderRadius: "16px", padding: "32px", textAlign: "center",
-            animation: "fadeIn 0.5s ease",
-          }}>
-            <div style={{ fontSize: "32px", marginBottom: "12px" }}>{"\u2728"}</div>
-            <h3 style={{
-              fontFamily: THEME.fontHeading, fontSize: "22px", fontWeight: 700,
-              margin: "0 0 12px", color: THEME.text,
-            }}>Get the Full Design Package</h3>
-            <p style={{ color: THEME.textMuted, fontSize: "14px", lineHeight: 1.6, maxWidth: "400px", margin: "0 auto 20px" }}>
-              Get a hi-res realistic rendering of your land design, an enhanced permaculture report, and a PDF delivered to your email. Optionally upload a sketch or photo for spatial analysis.
-            </p>
-            <ul style={{
-              listStyle: "none", padding: 0, margin: "0 auto 24px", maxWidth: "320px", textAlign: "left",
-            }}>
-              {[
-                "Hi-res realistic rendering of your design",
-                "Extended report with structures & considerations",
-                "Sketch analysis with spatial recommendations (if uploaded)",
-                "PDF report + email delivery",
-              ].map((item, i) => (
-                <li key={i} style={{
-                  display: "flex", alignItems: "center", gap: "8px",
-                  padding: "6px 0", fontSize: "13px", color: THEME.textMuted,
-                }}>
-                  <span style={{ color: THEME.accent }}>{"\u2713"}</span> {item}
-                </li>
-              ))}
-            </ul>
-
-            {/* Sketch Upload */}
-            <div style={{ margin: "0 auto 20px", maxWidth: "400px" }}>
-              <label style={{
-                display: "block", fontFamily: THEME.fontMono, fontSize: "11px",
-                color: THEME.textDim, textTransform: "uppercase", letterSpacing: "2px",
-                marginBottom: "8px", textAlign: "left",
-              }}>Upload Your Sketch (Optional)</label>
-              {sketchPreview ? (
-                <div style={{
-                  position: "relative", borderRadius: "10px", overflow: "hidden",
-                  border: `1px solid rgba(74,222,128,0.25)`,
-                }}>
-                  <img src={sketchPreview} alt="Sketch preview" style={{
-                    width: "100%", maxHeight: "200px", objectFit: "contain",
-                    background: "rgba(255,255,255,0.02)",
-                  }} />
-                  <button
-                    onClick={() => { setSketchFile(null); setSketchPreview(null); }}
-                    style={{
-                      position: "absolute", top: "8px", right: "8px",
-                      background: "rgba(0,0,0,0.7)", border: "none", color: "white",
-                      width: "28px", height: "28px", borderRadius: "50%",
-                      cursor: "pointer", fontSize: "14px", display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                    }}
-                  >{"\u2715"}</button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => sketchInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  style={{
-                    border: `1px dashed rgba(255,255,255,0.15)`, borderRadius: "10px",
-                    padding: "20px", textAlign: "center", cursor: "pointer",
-                    transition: "border-color 0.2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#fbbf24")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)")}
+            {reportComplete && (
+              <div style={{
+                marginTop: "24px", paddingTop: "16px",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                textAlign: "right", fontStyle: "italic",
+                fontSize: "12px", color: THEME.textDim,
+              }}>
+                Design insights by{" "}
+                <a
+                  href="https://www.ecosystem.design"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: THEME.accent, textDecoration: "none" }}
+                  onMouseEnter={(e) => (e.target.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.target.style.textDecoration = "none")}
                 >
-                  <div style={{ fontSize: "24px", marginBottom: "8px" }}>{"\uD83D\uDCC4"}</div>
-                  <p style={{ color: THEME.textMuted, fontSize: "13px", margin: 0 }}>
-                    Drop your hand-drawn sketch here, or click to browse
-                  </p>
-                </div>
-              )}
-              <input
-                ref={sketchInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => handleSketchSelect(e.target.files?.[0])}
-              />
-            </div>
-
-            <button
-              onClick={handleGetPremium}
-              style={{
-                padding: "14px 32px", border: "none", borderRadius: "10px",
-                fontFamily: THEME.fontBody, fontSize: "16px", fontWeight: 600,
-                cursor: "pointer",
-                background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
-                color: "#000",
-                transition: "all 0.2s",
-              }}
-            >
-              $7 — Get Full Package
-            </button>
-          </div>
-        )}
-
-        {/* ── Payment Processing ── */}
-        {paymentProcessing && !orderCompleted && (
-          <div style={{
-            marginTop: "24px", background: THEME.surface,
-            border: `1px solid ${THEME.border}`, borderRadius: "16px",
-            padding: "32px", textAlign: "center",
-          }}>
-            <p style={{ color: THEME.textMuted, fontSize: "14px", marginBottom: "16px" }}>
-              {popupBlocked
-                ? "Popup was blocked. Please complete payment using the link below."
-                : pollingTimedOut
-                  ? "Payment check timed out."
-                  : "Waiting for payment confirmation..."}
-            </p>
-
-            {popupBlocked && (
-              <a
-                href={checkoutUrlRef.current}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-block", padding: "10px 20px", marginBottom: "16px",
-                  background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
-                  color: "#000", borderRadius: "8px", fontWeight: 600,
-                  textDecoration: "none", fontSize: "14px",
-                }}
-              >
-                Open Checkout
-              </a>
-            )}
-
-            <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
-              <button
-                onClick={checkPaymentNow}
-                style={{
-                  padding: "10px 20px", background: "rgba(255,255,255,0.06)",
-                  border: `1px solid ${THEME.border}`, borderRadius: "8px",
-                  color: THEME.text, fontFamily: THEME.fontBody, fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                I've already paid
-              </button>
-              <button
-                onClick={handleCancelPayment}
-                style={{
-                  padding: "10px 20px", background: "none",
-                  border: "none", color: THEME.textDim,
-                  fontFamily: THEME.fontBody, fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Paid Report Loading ── */}
-        {paidLoading && (
-          <div style={{
-            marginTop: "24px", background: THEME.surface,
-            border: `1px solid ${THEME.border}`, borderRadius: "16px",
-            padding: "32px", textAlign: "center",
-          }}>
-            <div style={{ fontSize: "36px", marginBottom: "16px", animation: "landPulse 1.5s ease-in-out infinite" }}>
-              {"\uD83C\uDFA8"}
-            </div>
-            <p style={{
-              fontFamily: THEME.fontMono, fontSize: "13px", color: THEME.textMuted,
-              letterSpacing: "0.5px",
-            }}>
-              {paidStageMessages[paidStage] || "Processing..."}
-            </p>
-          </div>
-        )}
-
-        {/* ── Paid Report Error ── */}
-        {paidError && (
-          <div style={{
-            marginTop: "24px", padding: "16px",
-            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
-            borderRadius: "10px", color: "#ef4444", fontSize: "14px",
-          }}>
-            {paidError}
-          </div>
-        )}
-
-        {/* ── Paid Report Results ── */}
-        {(paidReport || paidImage) && (
-          <div ref={paidResultRef} style={{ marginTop: "32px", animation: "fadeIn 0.5s ease" }}>
-            {/* Realistic rendering */}
-            {paidImage && (
-              <div style={{
-                background: THEME.surface, border: `1px solid ${THEME.border}`,
-                borderRadius: "16px", overflow: "hidden", marginBottom: "24px",
-              }}>
-                <div style={{ padding: "16px 20px", borderBottom: `1px solid ${THEME.border}` }}>
-                  <h3 style={{
-                    fontFamily: THEME.fontHeading, fontSize: "16px", fontWeight: 700,
-                    margin: 0, color: THEME.text,
-                  }}>Realistic Rendering</h3>
-                </div>
-                <img
-                  src={paidImage}
-                  alt="Realistic permaculture design rendering"
-                  style={{ width: "100%", display: "block" }}
-                />
-              </div>
-            )}
-
-            {/* Enhanced report */}
-            {paidReport && (
-              <div style={{
-                background: THEME.surface, border: `1px solid ${THEME.border}`,
-                borderRadius: "16px", padding: "32px", marginBottom: "24px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
-                  <span style={{ fontSize: "20px" }}>{"\uD83D\uDC51"}</span>
-                  <h3 style={{
-                    fontFamily: THEME.fontHeading, fontSize: "18px", fontWeight: 700,
-                    margin: 0, color: THEME.text,
-                  }}>Premium Design Report</h3>
-                </div>
-                <div
-                  style={{
-                    fontFamily: THEME.fontBody, fontSize: "15px", lineHeight: 1.7,
-                    color: "rgba(255,255,255,0.85)",
-                  }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(paidReport) }}
-                />
-              </div>
-            )}
-
-            {/* Email status */}
-            {emailStatus && (
-              <div style={{
-                padding: "12px 16px", borderRadius: "8px", fontSize: "13px",
-                background: emailStatus.sent ? "rgba(74,222,128,0.08)" : "rgba(251,191,36,0.08)",
-                border: `1px solid ${emailStatus.sent ? "rgba(74,222,128,0.25)" : "rgba(251,191,36,0.25)"}`,
-                color: emailStatus.sent ? THEME.accent : "#fbbf24",
-                marginBottom: "24px",
-              }}>
-                {emailStatus.sent
-                  ? `Report sent to ${emailStatus.address}`
-                  : emailStatus.error || "Email delivery not available"}
+                  ecosystem.design
+                </a>
               </div>
             )}
           </div>

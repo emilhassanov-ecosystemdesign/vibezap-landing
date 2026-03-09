@@ -135,6 +135,12 @@ export default function TemplateApp() {
           </div>
         </div>
       )}
+
+      {/* Legal disclaimer */}
+      <div style={{ borderTop: '1px solid #1a1a3a', marginTop: 32, paddingTop: 16, textAlign: 'center', fontSize: 12, color: '#777', fontFamily: "'Outfit', sans-serif" }}>
+        ⚠️ For educational &amp; entertainment purposes only. AI outputs may be inaccurate. Use at your own risk. See{' '}
+        <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: '#777', textDecoration: 'underline' }}>Terms of Service</a>.
+      </div>
     </div>
   )
 }

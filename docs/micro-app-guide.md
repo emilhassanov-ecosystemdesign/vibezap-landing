@@ -26,6 +26,8 @@ Key things to customize:
 - Results display
 - API endpoint URL
 
+> **Note:** The template already includes the legal disclaimer at the bottom. Do not remove it — it's required on every tool page. See CLAUDE.md "Legal Compliance" section for details.
+
 ### Styling Convention
 - All styles are inline via React `style` props
 - Use the brand tokens from CLAUDE.md
@@ -165,6 +167,7 @@ Vercel auto-deploys. Check the deployment at https://vercel.com/dashboard.
 - [ ] API endpoint created (if needed)
 - [ ] Env vars added to Vercel (if new ones needed)
 - [ ] Tool card added/updated in `VibeZapLanding.jsx`
+- [ ] **Legal disclaimer present** in component (included in template by default)
 - [ ] CLAUDE.md micro-apps registry updated
 - [ ] `npm run build` passes
 - [ ] Tested locally with `npm run preview` or `vercel dev`

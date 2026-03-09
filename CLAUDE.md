@@ -50,17 +50,25 @@ vibezap-landing/
 │       └── n8nLogger.js           # withN8nLogging wrapper + sendToN8n
 ├── src/
 │   ├── main.jsx                  # React entry point
-│   ├── App.jsx                   # Router — maps routes to micro-apps
+│   ├── App.jsx                   # Router — wraps routes with ConsentGate + LegalFooter
+│   ├── ConsentGate.jsx            # Blocking consent overlay (ToS + Privacy acceptance)
+│   ├── LegalFooter.jsx            # "Terms of Service · Privacy Policy" links on every page
 │   ├── VibeZapLanding.jsx         # Landing page (/)
 │   └── apps/                     # Micro-app modules
+│       ├── _template/
+│       │   └── TemplateApp.jsx       # Starter template for new apps (includes disclaimer)
 │       ├── roast-my-website/
 │       │   ├── RoastMyWebsite.jsx    # Roast tool UI (/roast)
 │       │   └── README.md             # App-specific docs
-│       └── scam-check/
-│           ├── ScamCheck.jsx         # Scam check tool UI (/scam-check)
-│           └── README.md             # App-specific docs
+│       ├── scam-check/
+│       │   ├── ScamCheck.jsx         # Scam check tool UI (/scam-check)
+│       │   └── README.md             # App-specific docs
+│       └── land-design/
+│           └── LandDesign.jsx        # Land design tool UI (/land-design)
 ├── public/
 │   ├── favicon.svg
+│   ├── terms.html                 # Terms of Service (static HTML)
+│   ├── privacy.html               # Privacy Policy (static HTML)
 │   └── dashboard.html             # Analytics dashboard (password-protected)
 ├── docs/                         # Project documentation
 │   ├── tech-stack.md
@@ -242,7 +250,35 @@ Quick summary:
 2. Add route in `App.jsx`
 3. Add API endpoint in `api/<name>.js` (if needed)
 4. Add tool card in `VibeZapLanding.jsx` tools array
-5. Update the Micro-Apps Registry table above
+5. **Add the legal disclaimer** to the bottom of the component (see Legal Compliance below)
+6. Update the Micro-Apps Registry table above
+
+## Legal Compliance
+
+All tool pages must include legal elements. These are already wired up globally and per-tool:
+
+### Global (automatic — no action needed for new apps)
+- **ConsentGate** (`src/ConsentGate.jsx`) — Blocking overlay on first visit. User must check "I agree to ToS + Privacy Policy" before any tool is accessible. Persisted via `localStorage('vibezap_consent_accepted')`.
+- **LegalFooter** (`src/LegalFooter.jsx`) — "Terms of Service · Privacy Policy" links rendered on every page via `App.jsx`.
+
+### Per-tool (must be added to every new micro-app)
+- **Inline disclaimer** — Add this JSX block just before the final closing `</div>` of your component:
+
+```jsx
+{/* Legal disclaimer */}
+<div style={{ borderTop: '1px solid #1a1a3a', marginTop: 32, paddingTop: 16, textAlign: 'center', fontSize: 12, color: '#777', fontFamily: "'Outfit', sans-serif" }}>
+  ⚠️ For educational &amp; entertainment purposes only. AI outputs may be inaccurate. Use at your own risk. See{' '}
+  <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: '#777', textDecoration: 'underline' }}>Terms of Service</a>.
+</div>
+```
+
+The `_template/TemplateApp.jsx` already includes this disclaimer — new apps copied from the template get it automatically.
+
+### Static legal pages
+- `public/terms.html` — Terms of Service
+- `public/privacy.html` — Privacy Policy
+- Contact email in both: `hello@vibezap.dev`
+- If terms are updated, change the "Last updated" date in both files
 
 ## Brand & Design Tokens
 

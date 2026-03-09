@@ -124,4 +124,4 @@ function withN8nLogging(config, handler) {
   };
 }
 
-module.exports = { sendToN8n, withN8nLogging };
+export { sendToN8n, withN8nLogging };

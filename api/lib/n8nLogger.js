@@ -8,12 +8,12 @@
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
 
 /**
- * Fire-and-forget POST to n8n webhook.
- * Never throws, never blocks the response.
+ * POST to n8n webhook. Returns a promise so callers can await it.
+ * Never throws — catches errors internally.
  */
-function sendToN8n(payload) {
+async function sendToN8n(payload) {
   if (!N8N_WEBHOOK_URL) return;
-  fetch(N8N_WEBHOOK_URL, {
+  await fetch(N8N_WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -85,9 +85,11 @@ function withN8nLogging(config, handler) {
       status = "failed";
       errorType = err.code || err.name || "unknown";
       errorMessage = (err.message || "").substring(0, 200);
-      throw err;
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Internal server error" });
+      }
     } finally {
-      sendToN8n({
+      await sendToN8n({
         // ── Identity (from config — self-declaring) ──
         app_name: config.appName,
         endpoint_id: config.endpointId,

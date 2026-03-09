@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibeZap Analytics</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'SF Pro Display','Segoe UI',system-ui,sans-serif; background:linear-gradient(145deg,#06061a 0%,#0e0e2a 40%,#0a0a1e 100%); color:#d0d0d0; min-height:100vh; }
+
+    /* ── Password Gate ── */
+    #login-gate { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .login-box { background:rgba(255,255,255,0.03); border:1px solid #1e1e3a; border-radius:16px; padding:40px; width:360px; text-align:center; }
+    .login-box h1 { font-size:24px; font-weight:800; background:linear-gradient(135deg,#00E676,#00BCD4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:8px; }
+    .login-box p { font-size:13px; color:#555; margin-bottom:24px; }
+    .login-box input { width:100%; padding:12px 16px; background:rgba(255,255,255,0.05); border:1px solid #2a2a4a; border-radius:10px; color:#fff; font-size:14px; outline:none; margin-bottom:12px; }
+    .login-box input:focus { border-color:#00E676; }
+    .login-box button { width:100%; padding:12px; background:linear-gradient(135deg,#00E676,#00BCD4); border:none; border-radius:10px; color:#000; font-size:14px; font-weight:700; cursor:pointer; }
+    .login-box button:hover { opacity:0.9; }
+    .login-box button:disabled { opacity:0.5; cursor:not-allowed; }
+    .login-error { color:#FF5252; font-size:12px; margin-top:8px; }
+
+    /* ── Dashboard ── */
+    #dashboard { display:none; padding:28px 24px; max-width:1400px; margin:0 auto; }
+    .dash-header { margin-bottom:24px; }
+    .dash-title { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+    .dash-brand { font-size:28px; font-weight:800; background:linear-gradient(135deg,#00E676,#00BCD4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .dash-sub { font-size:22px; font-weight:300; color:#555; }
+    .dash-badge { font-size:11px; background:rgba(0,230,118,0.1); color:#00E676; padding:3px 10px; border-radius:10px; font-weight:600; margin-left:8px; }
+    .dash-meta { font-size:12px; color:#444; margin-top:4px; }
+
+    .filters { display:flex; gap:6px; margin-bottom:22px; flex-wrap:wrap; }
+    .filter-btn { padding:6px 14px; border-radius:18px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid #222244; background:transparent; color:#666; transition:all 0.15s; }
+    .filter-btn.active { border-color:#00E676; background:rgba(0,230,118,0.1); color:#00E676; }
+    .filter-btn.tier.active { border-color:#FFD740; background:rgba(255,215,64,0.08); color:#FFD740; }
+    .filter-sep { width:1px; background:#222244; margin:0 4px; }
+
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin-bottom:24px; }
+    .kpi-card { background:rgba(255,255,255,0.025); border:1px solid #1e1e3a; border-radius:14px; padding:14px 16px; position:relative; overflow:hidden; }
+    .kpi-bar { position:absolute; top:0; left:0; right:0; height:2px; }
+    .kpi-label { font-size:10px; color:#555; text-transform:uppercase; letter-spacing:0.8px; font-weight:600; margin-bottom:5px; }
+    .kpi-value { font-size:20px; font-weight:800; margin-bottom:2px; }
+    .kpi-sub { font-size:10px; color:#444; }
+
+    .card { background:rgba(255,255,255,0.025); border:1px solid #1e1e3a; border-radius:14px; padding:20px; margin-bottom:16px; }
+    .card-title { font-size:13px; font-weight:700; color:#bbb; margin-bottom:14px; }
+    .card-title span { font-size:10px; color:#555; font-weight:400; }
+
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th { padding:8px 10px; text-align:left; color:#666; font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #2a2a4a; }
+    td { padding:10px; border-bottom:1px solid #151530; }
+
+    .pill { padding:2px 8px; border-radius:10px; font-weight:600; font-size:10px; }
+    .pill-green { background:rgba(0,230,118,0.12); color:#00E676; }
+    .pill-red { background:rgba(255,82,82,0.12); color:#FF5252; }
+    .pill-gray { background:rgba(255,255,255,0.04); color:#888; }
+    .pill-ok { background:rgba(76,175,80,0.08); color:#4CAF50; }
+
+    .insights-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; }
+    .insight { display:flex; gap:10px; padding:10px 12px; background:rgba(255,255,255,0.015); border-radius:8px; }
+    .insight-icon { font-size:18px; flex-shrink:0; }
+    .insight-title { font-size:11px; font-weight:700; margin-bottom:2px; }
+    .insight-desc { font-size:10px; color:#777; line-height:1.5; }
+
+    .loading { text-align:center; padding:60px; color:#555; font-size:14px; }
+    .logout-btn { position:fixed; top:16px; right:20px; padding:6px 14px; border-radius:18px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid #333; background:rgba(255,82,82,0.08); color:#FF5252; z-index:100; }
+    .logout-btn:hover { background:rgba(255,82,82,0.15); }
+    .mono { font-family:'SF Mono',monospace; font-size:10px; }
+    .footer { text-align:center; margin-top:20px; font-size:10px; color:#333; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ PASSWORD GATE ══════════════ -->
+<div id="login-gate">
+  <div class="login-box">
+    <h1>⚡ VibeZap Analytics</h1>
+    <p>Enter your dashboard password</p>
+    <input type="password" id="password-input" placeholder="Password" autofocus>
+    <button id="login-btn" onclick="doLogin()">Access Dashboard</button>
+    <div id="login-error" class="login-error" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div id="dashboard">
+  <button class="logout-btn" onclick="doLogout()">Logout</button>
+  <div class="dash-header">
+    <div class="dash-title">
+      <span class="dash-brand">⚡ VibeZap</span>
+      <span class="dash-sub">Analytics</span>
+      <span class="dash-badge" id="app-count-badge">Loading...</span>
+    </div>
+    <div class="dash-meta">Live data from Google Sheets · New apps auto-appear · <span id="last-updated"></span></div>
+  </div>
+
+  <div class="filters" id="filters"></div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="card" id="app-table-card">
+    <div class="card-title">Per-App Performance <span id="app-count-span"></span></div>
+    <div style="overflow-x:auto"><table id="app-table"></table></div>
+  </div>
+  <div class="card" id="ep-table-card">
+    <div class="card-title">Per-Endpoint Breakdown <span id="ep-count-span"></span></div>
+    <div style="overflow-x:auto"><table id="ep-table"></table></div>
+  </div>
+  <div class="card" id="insights-card">
+    <div class="card-title">💡 Auto-Generated Insights</div>
+    <div class="insights-grid" id="insights-grid"></div>
+  </div>
+  <div class="footer">VibeZap Dynamic Analytics · Password-protected · Claude Sonnet 4 · LemonSqueezy</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════
+let PASSWORD = "";
+let RAW_DATA = [];
+let FILTERED = [];
+let APP_FILTER = "all";
+let TIER_FILTER = "all";
+const PALETTE = ["#FF6B35","#00BCD4","#4CAF50","#AB47BC","#FFD740","#E91E63","#00E5FF","#FF7043","#66BB6A","#5C6BC0"];
+let APP_COLORS = {};
+
+// ═══════════════════════════════════════════════════════
+// Auth
+// ═══════════════════════════════════════════════════════
+document.getElementById("password-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") doLogin();
+});
+
+async function doLogin() {
+  const input = document.getElementById("password-input");
+  const btn = document.getElementById("login-btn");
+  const err = document.getElementById("login-error");
+  PASSWORD = input.value.trim();
+  if (!PASSWORD) return;
+
+  btn.disabled = true;
+  btn.textContent = "Loading...";
+  err.style.display = "none";
+
+  try {
+    const res = await fetch("/api/dashboard-data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: PASSWORD }),
+    });
+
+    if (res.status === 401) {
+      err.textContent = "Wrong password";
+      err.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Access Dashboard";
+      return;
+    }
+
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+
+    RAW_DATA = normalizeData(json.data);
+    document.getElementById("login-gate").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    document.getElementById("last-updated").textContent = "Updated: " + new Date(json.lastUpdated).toLocaleString();
+
+    buildColorMap();
+    buildFilters();
+    applyFilters();
+  } catch (e) {
+    err.textContent = "Error: " + e.message;
+    err.style.display = "block";
+    btn.disabled = false;
+    btn.textContent = "Access Dashboard";
+  }
+}
+
+function doLogout() {
+  PASSWORD = "";
+  RAW_DATA = [];
+  document.getElementById("dashboard").style.display = "none";
+  document.getElementById("login-gate").style.display = "flex";
+  document.getElementById("password-input").value = "";
+}
+
+// ═══════════════════════════════════════════════════════
+// Data normalization (Google Sheets column names → clean keys)
+// ═══════════════════════════════════════════════════════
+function normalizeData(rows) {
+  return rows.map(r => ({
+    date: r["Date"] || "",
+    app: r["App Name"] || "",
+    eid: r["Endpoint ID"] || "",
+    ep: r["Endpoint"] || "",
+    tier: r["Tier"] || "free",
+    status: r["Status"] || "success",
+    model: r["Model"] || "",
+    cost: parseFloat(r["AI Cost ($)"]) || 0,
+    extraCost: parseFloat(r["Extra Tools ($)"]) || 0,
+    rev: parseFloat(r["Revenue ($)"]) || 0,
+    fee: parseFloat(r["Payment Fee ($)"]) || 0,
+    profit: parseFloat(r["Profit ($)"]) || 0,
+    lat: parseInt(r["Latency (ms)"]) || 0,
+    tokIn: parseInt(r["Tokens In"]) || 0,
+    tokOut: parseInt(r["Tokens Out"]) || 0,
+    errType: r["Error Type"] || "",
+    country: r["Country"] || "",
+    referrer: r["Referrer"] || "",
+  }));
+}
+
+function buildColorMap() {
+  const apps = [...new Set(RAW_DATA.map(d => d.app))].sort();
+  APP_COLORS = {};
+  apps.forEach((a, i) => { APP_COLORS[a] = PALETTE[i % PALETTE.length]; });
+}
+
+// ═══════════════════════════════════════════════════════
+// Filters
+// ═══════════════════════════════════════════════════════
+function buildFilters() {
+  const apps = [...new Set(RAW_DATA.map(d => d.app))].sort();
+  const box = document.getElementById("filters");
+  box.innerHTML = "";
+
+  // App filters
+  addFilterBtn(box, "All Apps", "all", "app");
+  apps.forEach(a => addFilterBtn(box, a, a, "app"));
+
+  // Separator
+  const sep = document.createElement("div");
+  sep.className = "filter-sep";
+  box.appendChild(sep);
+
+  // Tier filters
+  ["all", "free", "paid"].forEach(t => {
+    addFilterBtn(box, t === "all" ? "All Tiers" : t.charAt(0).toUpperCase() + t.slice(1), t, "tier");
+  });
+}
+
+function addFilterBtn(parent, label, value, type) {
+  const btn = document.createElement("button");
+  btn.className = "filter-btn" + (type === "tier" ? " tier" : "");
+  btn.textContent = label;
+  if ((type === "app" && APP_FILTER === value) || (type === "tier" && TIER_FILTER === value)) {
+    btn.classList.add("active");
+  }
+  btn.onclick = () => {
+    if (type === "app") APP_FILTER = value;
+    else TIER_FILTER = value;
+    buildFilters();
+    applyFilters();
+  };
+  parent.appendChild(btn);
+}
+
+function applyFilters() {
+  FILTERED = RAW_DATA.filter(d => {
+    if (APP_FILTER !== "all" && d.app !== APP_FILTER) return false;
+    if (TIER_FILTER !== "all" && d.tier !== TIER_FILTER) return false;
+    return true;
+  });
+  renderKPIs();
+  renderAppTable();
+  renderEndpointTable();
+  renderInsights();
+}
+
+// ═══════════════════════════════════════════════════════
+// KPIs
+// ═══════════════════════════════════════════════════════
+function renderKPIs() {
+  const d = FILTERED;
+  const n = d.length;
+  const ok = d.filter(x => x.status === "success").length;
+  const fail = n - ok;
+  const rev = d.reduce((s, x) => s + x.rev, 0);
+  const cost = d.reduce((s, x) => s + x.cost, 0);
+  const fees = d.reduce((s, x) => s + x.fee, 0);
+  const prof = d.reduce((s, x) => s + x.profit, 0);
+  const paid = d.filter(x => x.tier === "paid").length;
+  const lat = n ? Math.round(d.reduce((s, x) => s + x.lat, 0) / n) : 0;
+  const apps = new Set(d.map(x => x.app)).size;
+
+  document.getElementById("app-count-badge").textContent = `LIVE — ${apps} apps tracked`;
+
+  const kpis = [
+    { l:"Requests", v:n, c:"#00BCD4", s:`${paid} paid · ${n-paid} free` },
+    { l:"Revenue", v:fmtD(rev), c:"#00E676", s:`${n?(paid/n*100).toFixed(1):"0"}% conversion` },
+    { l:"AI Cost", v:fmtD(cost,3), c:"#FF6B35", s:`${rev?(cost/rev*100).toFixed(1):"0"}% of revenue` },
+    { l:"LS Fees", v:fmtD(fees), c:"#AB47BC", s:`${rev?(fees/rev*100).toFixed(1):"0"}% of revenue` },
+    { l:"Net Profit", v:fmtD(prof), c:prof>=0?"#00E676":"#FF5252", s:`${rev?(prof/rev*100).toFixed(1):"0"}% margin` },
+    { l:"Fail Rate", v:`${n?((fail/n)*100).toFixed(1):"0"}%`, c:n&&(fail/n)>0.05?"#FF5252":"#4CAF50", s:`${fail} of ${n}` },
+    { l:"Avg Latency", v:`${(lat/1000).toFixed(1)}s`, c:lat>4000?"#FF5252":"#FFD740", s:`${lat}ms` },
+  ];
+
+  const grid = document.getElementById("kpi-grid");
+  grid.innerHTML = kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-bar" style="background:linear-gradient(90deg,${k.c},transparent)"></div>
+      <div class="kpi-label">${k.l}</div>
+      <div class="kpi-value" style="color:${k.c}">${k.v}</div>
+      <div class="kpi-sub">${k.s}</div>
+    </div>
+  `).join("");
+}
+
+// ═══════════════════════════════════════════════════════
+// Per-App Table
+// ═══════════════════════════════════════════════════════
+function renderAppTable() {
+  const m = {};
+  FILTERED.forEach(d => {
+    if (!m[d.app]) m[d.app] = { name:d.app, rq:0, fr:0, pd:0, rv:0, ct:0, fe:0, pr:0, fl:0, ls:0 };
+    const a = m[d.app]; a.rq++; d.tier==="free"?a.fr++:a.pd++; a.rv+=d.rev; a.ct+=d.cost; a.fe+=d.fee; a.pr+=d.profit;
+    if(d.status==="failed") a.fl++; a.ls+=d.lat;
+  });
+  const apps = Object.values(m).sort((a,b) => b.rv - a.rv);
+  document.getElementById("app-count-span").textContent = `(${apps.length} apps)`;
+
+  const tbl = document.getElementById("app-table");
+  tbl.innerHTML = `
+    <thead><tr>${["App","Reqs","Free","Paid","Conv%","Revenue","AI Cost","LS Fees","Profit","Margin","Latency","Fail%"].map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${apps.map(a => {
+      const cv=a.rq?((a.pd/a.rq)*100).toFixed(1):"0", mg=a.rv?((a.pr/a.rv)*100).toFixed(1):"N/A",
+        lt=a.rq?Math.round(a.ls/a.rq):0, fr=a.rq?((a.fl/a.rq)*100).toFixed(1):"0";
+      return `<tr>
+        <td style="font-weight:700;color:${APP_COLORS[a.name]||'#ccc'}">${a.name}</td>
+        <td style="font-weight:600;color:#fff">${a.rq}</td>
+        <td style="color:#888">${a.fr}</td>
+        <td style="color:#00E676;font-weight:600">${a.pd}</td>
+        <td><span class="pill ${parseFloat(cv)>20?'pill-green':'pill-gray'}">${cv}%</span></td>
+        <td style="color:#00E676;font-weight:700">${fmtD(a.rv)}</td>
+        <td style="color:#FF6B35">${fmtD(a.ct,3)}</td>
+        <td style="color:#AB47BC">${fmtD(a.fe)}</td>
+        <td style="color:${a.pr>=0?'#00E676':'#FF5252'};font-weight:700">${fmtD(a.pr)}</td>
+        <td style="color:#FFD740;font-weight:600">${mg}${mg!=="N/A"?"%":""}</td>
+        <td style="color:${lt>4000?'#FF5252':'#888'}">${(lt/1000).toFixed(1)}s</td>
+        <td><span class="pill ${parseFloat(fr)>5?'pill-red':'pill-ok'}">${fr}%</span></td>
+      </tr>`;
+    }).join("")}</tbody>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// Per-Endpoint Table
+// ═══════════════════════════════════════════════════════
+function renderEndpointTable() {
+  const m = {};
+  FILTERED.forEach(d => {
+    if (!m[d.eid]) m[d.eid] = { eid:d.eid, ep:d.ep, app:d.app, rq:0, rv:0, ct:0, pr:0, fl:0 };
+    const e = m[d.eid]; e.rq++; e.rv+=d.rev; e.ct+=d.cost; e.pr+=d.profit; if(d.status==="failed") e.fl++;
+  });
+  const eps = Object.values(m).sort((a,b) => b.rv - a.rv);
+  document.getElementById("ep-count-span").textContent = `(${eps.length} endpoints)`;
+
+  const tbl = document.getElementById("ep-table");
+  tbl.innerHTML = `
+    <thead><tr>${["Endpoint ID","Route","App","Reqs","Revenue","AI Cost","Profit","Avg $/Req","Fail%"].map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${eps.map(e => `<tr>
+      <td><span class="pill" style="background:${APP_COLORS[e.app]||'#444'};color:#fff">${e.eid}</span></td>
+      <td class="mono" style="color:#888">${e.ep}</td>
+      <td style="color:${APP_COLORS[e.app]||'#ccc'};font-weight:600">${e.app}</td>
+      <td style="font-weight:600;color:#ccc">${e.rq}</td>
+      <td style="color:#00E676;font-weight:700">${fmtD(e.rv)}</td>
+      <td style="color:#FF6B35">${fmtD(e.ct,3)}</td>
+      <td style="color:${e.pr>=0?'#00E676':'#FF5252'};font-weight:700">${fmtD(e.pr)}</td>
+      <td style="color:#888">${fmtD(e.ct/e.rq,4)}</td>
+      <td><span class="pill ${e.fl>0?'pill-red':'pill-ok'}">${e.rq?((e.fl/e.rq)*100).toFixed(0):0}%</span></td>
+    </tr>`).join("")}</tbody>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// Insights (auto-generated)
+// ═══════════════════════════════════════════════════════
+function renderInsights() {
+  const m = {};
+  FILTERED.forEach(d => {
+    if (!m[d.app]) m[d.app] = { name:d.app, rq:0, pd:0, rv:0, ct:0, pr:0, fl:0 };
+    const a = m[d.app]; a.rq++; if(d.tier==="paid") a.pd++; a.rv+=d.rev; a.ct+=d.cost; a.pr+=d.profit; if(d.status==="failed") a.fl++;
+  });
+  const apps = Object.values(m).sort((a,b) => b.rv - a.rv);
+  const n = FILTERED.length;
+  const rev = FILTERED.reduce((s,d) => s+d.rev, 0);
+  const cost = FILTERED.reduce((s,d) => s+d.cost, 0);
+  const fees = FILTERED.reduce((s,d) => s+d.fee, 0);
+
+  const ins = [];
+  if (apps[0]) ins.push({ i:"🏆", t:"Top Revenue", d:`${apps[0].name} → ${fmtD(apps[0].rv)} from ${apps[0].pd} paid requests`, c:"#00E676" });
+  const drains = apps.filter(a => a.rv === 0);
+  if (drains.length) ins.push({ i:"💸", t:`${drains.length} Cost-Only App${drains.length>1?"s":""}`, d:`${drains.map(a=>a.name).join(", ")} — spending with no revenue.`, c:"#FFD740" });
+  const bestC = apps.filter(a=>a.pd>0).sort((a,b)=>(b.pd/b.rq)-(a.pd/a.rq))[0];
+  if (bestC) ins.push({ i:"📈", t:"Best Conversion", d:`${bestC.name} converts ${((bestC.pd/bestC.rq)*100).toFixed(0)}% to paid`, c:"#00BCD4" });
+  const cp = rev?(cost/rev*100).toFixed(1):"0", fp = rev?(fees/rev*100).toFixed(1):"0";
+  ins.push({ i:"⚡", t:"Cost Efficiency", d:`AI = ${cp}% of revenue, LS fees = ${fp}%. ${parseFloat(fp)>parseFloat(cp)?"Payment fees exceed AI costs!":"AI is your biggest expense."}`, c:"#FF6B35" });
+  const highFail = apps.filter(a=>a.fl>0).sort((a,b)=>(b.fl/b.rq)-(a.fl/a.rq))[0];
+  if (highFail) ins.push({ i:"🚨", t:"Highest Failures", d:`${highFail.name} — ${((highFail.fl/highFail.rq)*100).toFixed(0)}% fail rate (${highFail.fl} of ${highFail.rq})`, c:"#FF5252" });
+
+  document.getElementById("insights-grid").innerHTML = ins.map(x => `
+    <div class="insight" style="border:1px solid ${x.c}18">
+      <div class="insight-icon">${x.i}</div>
+      <div><div class="insight-title" style="color:${x.c}">${x.t}</div><div class="insight-desc">${x.d}</div></div>
+    </div>
+  `).join("");
+}
+
+// ═══════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════
+function fmtD(v, d=2) {
+  if (typeof v !== "number" || isNaN(v)) return "$0.00";
+  return Math.abs(v) < 1 && v !== 0 ? `$${v.toFixed(Math.max(d,3))}` : `$${v.toFixed(d)}`;
+}
+</script>
+</body>
+</html>

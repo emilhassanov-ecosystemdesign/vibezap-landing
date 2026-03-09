@@ -1,10 +1,11 @@
 import { handleSecurity } from "./lib/security.js";
+import { withN8nLogging } from "./lib/n8nLogger.js";
 import { checkRateLimit } from "./lib/store.js";
 
 const MAX_REQUESTS = 5;
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // CORS + origin validation
   if (handleSecurity(req, res)) return;
 
@@ -89,6 +90,8 @@ Be accurate and helpful. If the message is genuinely safe, say so clearly. If it
 
       const data = await response.json();
 
+      req._n8n.setUsage(data);
+
       if (data.error) {
         const msg = data.error.message || "";
         if (msg.toLowerCase().includes("rate limit")) {
@@ -137,3 +140,10 @@ Be accurate and helpful. If the message is genuinely safe, say so clearly. If it
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
+export default withN8nLogging({
+  appName: "Am I Being Scammed?",
+  endpointId: "scam_free",
+  endpoint: "/api/scam-check",
+  price: 0,
+}, handler);

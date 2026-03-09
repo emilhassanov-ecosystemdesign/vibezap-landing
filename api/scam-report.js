@@ -1,4 +1,5 @@
 import generateScamPdf from "./lib/generate-scam-pdf.js";
+import { withN8nLogging } from "./lib/n8nLogger.js";
 import { verifyOrder } from "./lib/verify-order.js";
 import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
 import { handleSecurity } from "./lib/security.js";
@@ -106,7 +107,7 @@ IMPORTANT RULES:
 
 Be thorough and accurate. Provide real, actionable analysis. Respond with ONLY the JSON.`;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // CORS + origin validation
   if (handleSecurity(req, res)) return;
 
@@ -196,6 +197,8 @@ export default async function handler(req, res) {
       });
 
       const data = await response.json();
+
+      req._n8n.setUsage(data);
 
       if (data.error) {
         console.error("[scam-report] Claude API error:", data.error);
@@ -336,3 +339,11 @@ export default async function handler(req, res) {
       .json({ error: "Failed to generate report. Please try again." });
   }
 }
+
+export default withN8nLogging({
+  appName: "Am I Being Scammed?",
+  endpointId: "scam_paid",
+  endpoint: "/api/scam-report",
+  price: 3.00,
+  maxTokens: 8000,
+}, handler);

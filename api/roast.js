@@ -1,4 +1,5 @@
 import { handleSecurity } from "./lib/security.js";
+import { withN8nLogging } from "./lib/n8nLogger.js";
 import { checkRateLimit } from "./lib/store.js";
 import { fetchSite } from "./lib/fetch-site.js";
 
@@ -51,7 +52,7 @@ function extractJSON(rawText, requiredField) {
   return null;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // CORS + origin validation
   if (handleSecurity(req, res)) return;
 
@@ -135,6 +136,8 @@ Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quot
 
       const data = await response.json();
 
+      req._n8n.setUsage(data);
+
       if (data.error) {
         const msg = data.error.message || "";
         if (msg.toLowerCase().includes("rate limit")) {
@@ -178,3 +181,11 @@ Be savage but fair. Think Gordon Ramsay reviewing websites. Make every line quot
     return res.status(500).json({ error: "Internal server error" });
   }
 }
+
+export default withN8nLogging({
+  appName: "Roast My Website",
+  endpointId: "roast_free",
+  endpoint: "/api/roast",
+  price: 0,
+  maxTokens: 1000,
+}, handler);

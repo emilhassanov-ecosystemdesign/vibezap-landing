@@ -5,6 +5,7 @@
  */
 
 import { validateOrigin, getCorsHeaders } from "./lib/security.js";
+import { sendToN8n } from "./lib/n8nLogger.js";
 import { checkRateLimit } from "./lib/store.js";
 import { geocodeAddress, fetchAllSiteData } from "./lib/site-data-fetcher.js";
 import { buildFreeReportPrompt } from "./lib/permaculture-prompts.js";
@@ -102,6 +103,8 @@ export async function POST(request) {
     async start(controller) {
       let heartbeatInterval = null;
 
+      const startTime = Date.now();
+
       try {
         // Step 1: Geocode
         sseEvent(controller, "progress", { stage: "geocoding", message: "Locating your property..." });
@@ -182,6 +185,17 @@ export async function POST(request) {
         heartbeatInterval = null;
 
         sseEvent(controller, "report_complete", {});
+        sendToN8n({
+          app_name: "Land Design Generator",
+          endpoint_id: "land_free",
+          endpoint: "/api/land-design",
+          price: 0,
+          max_tokens: 4000,
+          status: "success",
+          tier: "free",
+          model: "claude-sonnet-4-20250514",
+          latency_ms: Date.now() - startTime,
+        });
         controller.close();
       } catch (err) {
         if (heartbeatInterval) clearInterval(heartbeatInterval);

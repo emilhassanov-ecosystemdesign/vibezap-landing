@@ -1,4 +1,5 @@
 import generateRoastPdf from "./lib/generate-roast-pdf.js";
+import { sendToN8n } from "./lib/n8nLogger.js";
 import { verifyOrder } from "./lib/verify-order.js";
 import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
 import { validateOrigin, getCorsHeaders } from "./lib/security.js";
@@ -272,6 +273,8 @@ export async function POST(request) {
     async start(controller) {
       let heartbeatInterval = null;
 
+      const startTime = Date.now();
+
       try {
         // Check for cached report (retry scenario)
         const cached = await getCachedReport(orderId);
@@ -396,6 +399,22 @@ export async function POST(request) {
             console.log("[roast-report] Parse success", {
               overall_score: parsed.overall_score,
               fixes_count: parsed.specific_fixes?.length,
+            });
+            // Log to n8n analytics
+            sendToN8n({
+              app_name: "Roast My Website",
+              endpoint_id: "roast_paid",
+              endpoint: "/api/roast-report",
+              price: 5.00,
+              max_tokens: 16000,
+              status: "success",
+              tier: "paid",
+              model: data.model || "claude-sonnet-4-20250514",
+              tokens_input: data.usage?.input_tokens || 0,
+              tokens_output: data.usage?.output_tokens || 0,
+              latency_ms: Date.now() - startTime,
+              used_web_search: true,
+              web_search_count: 3,
             });
             break; // Success — exit retry loop
           }

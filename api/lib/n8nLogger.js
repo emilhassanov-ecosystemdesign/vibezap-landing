@@ -34,7 +34,7 @@ async function sendToN8n(payload) {
  *
  * ADDING A NEW APP? Just create a new handler and wrap it:
  *
- *   module.exports = withN8nLogging({
+ *   export default withN8nLogging({
  *     appName: "My Cool New App",
  *     endpointId: "cool_app_paid",
  *     endpoint: "/api/cool-app",

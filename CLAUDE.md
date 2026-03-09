@@ -45,7 +45,9 @@ vibezap-landing/
 │   ├── scam-check.js             # POST /api/scam-check — free scam analysis
 │   ├── scam-report.js            # POST /api/scam-report — $3 paid forensic report
 │   ├── check-payment.js          # GET /api/check-payment — payment polling fallback
-│   └── lib/                      # Shared utilities (PDF gen, email, order verification)
+│   ├── dashboard-data.js          # POST /api/dashboard-data — Google Sheets analytics
+│   └── lib/                      # Shared utilities
+│       └── n8nLogger.js           # withN8nLogging wrapper + sendToN8n
 ├── src/
 │   ├── main.jsx                  # React entry point
 │   ├── App.jsx                   # Router — maps routes to micro-apps
@@ -58,7 +60,8 @@ vibezap-landing/
 │           ├── ScamCheck.jsx         # Scam check tool UI (/scam-check)
 │           └── README.md             # App-specific docs
 ├── public/
-│   └── favicon.svg
+│   ├── favicon.svg
+│   └── dashboard.html             # Analytics dashboard (password-protected)
 ├── docs/                         # Project documentation
 │   ├── tech-stack.md
 │   ├── deployment.md

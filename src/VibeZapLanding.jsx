@@ -264,6 +264,8 @@ export default function VibeZapLanding() {
   const [scrollY, setScrollY] = useState(0);
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subError, setSubError] = useState("");
+  const [subLoading, setSubLoading] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -271,9 +273,28 @@ export default function VibeZapLanding() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleSubscribe = (e) => {
+  const handleSubscribe = async (e) => {
     e.preventDefault();
-    if (email.trim()) setSubscribed(true);
+    if (!email.trim()) return;
+    setSubError("");
+    setSubLoading(true);
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSubError(data.error || "Something went wrong");
+      } else {
+        setSubscribed(true);
+      }
+    } catch {
+      setSubError("Network error — please try again");
+    } finally {
+      setSubLoading(false);
+    }
   };
 
   const tools = [
@@ -820,10 +841,15 @@ export default function VibeZapLanding() {
                       color: brand.white,
                     }}
                   />
-                  <button className="cta-primary" onClick={handleSubscribe} style={{ borderRadius: "12px" }}>
-                    <ZapIcon size={14} color={brand.black} /> Subscribe
+                  <button className="cta-primary" onClick={handleSubscribe} disabled={subLoading} style={{ borderRadius: "12px", opacity: subLoading ? 0.6 : 1 }}>
+                    <ZapIcon size={14} color={brand.black} /> {subLoading ? "..." : "Subscribe"}
                   </button>
                 </div>
+              )}
+              {subError && (
+                <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: "13px", color: "#ff6b6b", marginTop: "12px" }}>
+                  {subError}
+                </p>
               )}
             </Reveal>
           </div>

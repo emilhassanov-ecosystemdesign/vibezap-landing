@@ -44,6 +44,7 @@ vibezap-landing/
 │   ├── roast-report.js           # POST /api/roast-report — $5 paid premium report
 │   ├── scam-check.js             # POST /api/scam-check — free scam analysis
 │   ├── scam-report.js            # POST /api/scam-report — $3 paid forensic report
+│   ├── subscribe.js               # POST /api/subscribe — newsletter signup → n8n webhook
 │   ├── check-payment.js          # GET /api/check-payment — payment polling fallback
 │   ├── dashboard-data.js          # POST /api/dashboard-data — Google Sheets analytics
 │   └── lib/                      # Shared utilities
@@ -322,6 +323,8 @@ Before saying "it works", verify ALL of these are set in Vercel:
 - [ ] `LEMONSQUEEZY_API_KEY` — Payment API access
 - [ ] `LEMONSQUEEZY_STORE_ID` — Store identifier
 - [ ] `LEMONSQUEEZY_WEBHOOK_SECRET` — Webhook signature verification
+- [ ] `N8N_WEBHOOK_URL` — n8n analytics logging webhook
+- [ ] `N8N_SUBSCRIBE_WEBHOOK_URL` — n8n newsletter subscriber webhook (`https://n8n.ecosystem.design/webhook/vibezap-subscribe`)
 - [ ] Any app-specific API keys (see app-specific README)
 - [ ] Any database/KV connection strings (if applicable)
 
@@ -341,6 +344,25 @@ When something breaks, go through this in order:
 - Use consistent styling approach across all apps (check existing apps for the pattern)
 - Inline CSS-in-JS only — no CSS files
 - Keep the "vibezap.dev" branding consistent across tools
+
+## n8n Newsletter Workflows
+
+Two n8n workflows handle the subscriber lifecycle:
+
+### 1. New Subscriber (`PELO49fHeo1Jv2Bw`)
+- **Trigger:** Webhook POST to `vibezap-subscribe`
+- **Flow:** Webhook → Enrich Data → Google Sheets (append to "Subscribers" tab) + Gmail (welcome email) → Respond 200
+- **Google Sheet:** [VibeZap Analytics Template](https://docs.google.com/spreadsheets/d/1FMWT4wK25jxWsrSCPA87s8MSbrsAfnVsOMOFsTG7q5c/edit) — "Subscribers" tab
+- **Columns:** email, source, timestamp, country, referrer, subscribed_date, status
+- **Credentials:** Google Sheets OAuth (`cCNeulJxx3ae6oLN`), Gmail OAuth (`VNEZB8LLOcfpyUvA`)
+
+### 2. New App Announcement (`tFazGGYQCm3aCxBd`)
+- **Trigger:** Manual (click Execute in n8n UI)
+- **Flow:** Manual Trigger → Set App Details → Read Subscribers from Sheets → Gmail (send to each)
+- **Usage:** Open workflow → double-click "Set — App Details" → update `app_name`, `app_route`, `app_description` → click Test Workflow
+
+### End-to-end subscribe flow:
+`Landing page form` → `POST /api/subscribe` → `n8n webhook` → `Google Sheets + welcome email`
 
 ## Contact
 

@@ -446,20 +446,23 @@ export default function LandDesign() {
             {reportComplete && (
               <div style={{
                 marginTop: "24px", paddingTop: "16px",
-                borderTop: "1px solid rgba(255,255,255,0.06)",
-                textAlign: "right", fontStyle: "italic",
-                fontSize: "12px", color: THEME.textDim,
+                borderTop: "1px solid rgba(255,255,255,0.08)",
+                textAlign: "center",
               }}>
-                Design insights by{" "}
                 <a
-                  href="https://www.ecosystem.design"
+                  href="https://vibezap.dev/land-design"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: THEME.accent, textDecoration: "none" }}
-                  onMouseEnter={(e) => (e.target.style.textDecoration = "underline")}
-                  onMouseLeave={(e) => (e.target.style.textDecoration = "none")}
+                  style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: "11px",
+                    color: "rgba(255,255,255,0.5)",
+                    letterSpacing: "2px",
+                    textDecoration: "none",
+                  }}
                 >
-                  ecosystem.design
+                  crafted with {"\uD83C\uDF3F"} by{" "}
+                  <span style={{ color: "rgba(255,255,255,0.7)" }}>vibezap.dev/land-design</span>
                 </a>
               </div>
             )}

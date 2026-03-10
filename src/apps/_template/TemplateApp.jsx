@@ -132,6 +132,26 @@ export default function TemplateApp() {
             <pre style={{ whiteSpace: 'pre-wrap', color: THEME.textMuted, fontSize: '14px' }}>
               {JSON.stringify(result, null, 2)}
             </pre>
+            {/* Watermark — update emoji, tagline, and route for your app */}
+            <div style={{
+              textAlign: 'center', padding: '20px 0 8px',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              marginTop: '24px',
+            }}>
+              <a
+                href="https://vibezap.dev/your-route"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontFamily: "'Space Mono', monospace", fontSize: '11px',
+                  color: 'rgba(255,255,255,0.5)', letterSpacing: '2px',
+                  textDecoration: 'none',
+                }}
+              >
+                powered by{' '}
+                <span style={{ color: 'rgba(255,255,255,0.7)' }}>vibezap.dev</span>
+              </a>
+            </div>
           </div>
         </div>
       )}

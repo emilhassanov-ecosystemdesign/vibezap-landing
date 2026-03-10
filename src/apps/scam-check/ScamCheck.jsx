@@ -1465,16 +1465,22 @@ export default function ScamCheck() {
               {/* Footer Branding */}
               {showDetails && (
                 <div style={{
-                  textAlign: "center", padding: "24px 0",
-                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  textAlign: "center", padding: "20px 0 8px",
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
                 }}>
-                  <p style={{
-                    fontFamily: "'Space Mono', monospace", fontSize: "11px",
-                    color: "rgba(255,255,255,0.25)", letterSpacing: "2px",
-                  }}>
+                  <a
+                    href="https://vibezap.dev/scam-check"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontFamily: "'Space Mono', monospace", fontSize: "11px",
+                      color: "rgba(255,255,255,0.5)", letterSpacing: "2px",
+                      textDecoration: "none",
+                    }}
+                  >
                     scanned with {"\uD83D\uDEE1\uFE0F"} by{" "}
-                    <span style={{ color: "rgba(255,255,255,0.45)" }}>vibezap.dev</span>
-                  </p>
+                    <span style={{ color: "rgba(255,255,255,0.7)" }}>vibezap.dev/scam-check</span>
+                  </a>
                 </div>
               )}
             </div>

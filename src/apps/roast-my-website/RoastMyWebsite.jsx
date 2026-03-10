@@ -1836,23 +1836,27 @@ export default function RoastMyWebsite() {
                 <div
                   style={{
                     textAlign: "center",
-                    padding: "24px 0",
-                    borderTop: "1px solid rgba(255,255,255,0.06)",
+                    padding: "20px 0 8px",
+                    borderTop: "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  <p
+                  <a
+                    href="https://vibezap.dev/roast"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                       fontFamily: "'Space Mono', monospace",
                       fontSize: "11px",
-                      color: "rgba(255,255,255,0.25)",
+                      color: "rgba(255,255,255,0.5)",
                       letterSpacing: "2px",
+                      textDecoration: "none",
                     }}
                   >
                     roasted with {"\uD83D\uDD25"} by{" "}
-                    <span style={{ color: "rgba(255,255,255,0.45)" }}>
-                      vibezap.dev
+                    <span style={{ color: "rgba(255,255,255,0.7)" }}>
+                      vibezap.dev/roast
                     </span>
-                  </p>
+                  </a>
                 </div>
               )}
             </div>

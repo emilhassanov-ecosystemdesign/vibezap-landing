@@ -490,9 +490,9 @@ export default function LandDesign() {
       </div>
 
       {/* Legal disclaimer */}
-      <div style={{ borderTop: '1px solid #1a1a3a', marginTop: 32, paddingTop: 16, textAlign: 'center', fontSize: 12, color: '#777', fontFamily: "'Outfit', sans-serif" }}>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 16, paddingTop: 10, textAlign: 'center', fontSize: 12, color: '#555', fontFamily: "'Outfit', sans-serif" }}>
         ⚠️ For educational &amp; entertainment purposes only. AI outputs may be inaccurate. Use at your own risk. See{' '}
-        <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: '#777', textDecoration: 'underline' }}>Terms of Service</a>.
+        <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: '#555', textDecoration: 'underline' }}>Terms of Service</a>.
       </div>
     </div>
   );

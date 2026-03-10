@@ -15,16 +15,17 @@ export default function LegalFooter() {
 const styles = {
   footer: {
     textAlign: 'center',
-    padding: '18px 0 22px',
+    padding: '10px 0 14px',
     fontSize: 12,
     fontFamily: "'Outfit', sans-serif",
+    background: '#06070B',
   },
   link: {
-    color: '#555',
+    color: '#444',
     textDecoration: 'none',
   },
   sep: {
-    color: '#555',
+    color: '#444',
     margin: '0 8px',
   },
 };

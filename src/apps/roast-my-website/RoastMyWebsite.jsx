@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 
 const ROAST_CATEGORIES = ["Design", "Copy", "UX", "Performance", "Trust"];
 
@@ -429,6 +430,7 @@ function LoadingState() {
 }
 
 export default function RoastMyWebsite() {
+  const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -774,6 +776,24 @@ export default function RoastMyWebsite() {
             zIndex: 1,
           }}
         >
+          {/* Back nav */}
+          <div style={{ padding: "20px 0" }}>
+            <button
+              onClick={() => navigate("/")}
+              style={{
+                background: "none", border: "none",
+                color: "rgba(255,255,255,0.35)", cursor: "pointer",
+                fontSize: "13px", fontFamily: "'Space Mono', monospace",
+                letterSpacing: "0.5px", padding: 0,
+                transition: "color 0.2s ease",
+              }}
+              onMouseEnter={(e) => e.target.style.color = "#00E5FF"}
+              onMouseLeave={(e) => e.target.style.color = "rgba(255,255,255,0.35)"}
+            >
+              &larr; Back to VibeZap
+            </button>
+          </div>
+
           {/* Header */}
           <div style={{ textAlign: "center", marginBottom: "48px" }}>
             <div

@@ -26,7 +26,16 @@ Key things to customize:
 - Results display
 - API endpoint URL
 
-> **Note:** The template already includes the legal disclaimer at the bottom. Do not remove it — it's required on every tool page. See CLAUDE.md "Legal Compliance" section for details.
+> **Note:** The template includes all required standard UI elements (see below). Do not remove them.
+
+### Required Standard UI Elements
+
+Every micro-app **must** include these elements (all present in the template):
+
+1. **"← Back to VibeZap" nav** — Top of page, uses `useNavigate()` from react-router-dom to go to `/`. Cyan hover (`#00E5FF`), Space Mono font.
+2. **"vibezap.dev presents" header** — Subtle uppercase text above the app title. Space Mono, `rgba(255,255,255,0.35)`, `letterSpacing: '4px'`.
+3. **Result watermark** — Inside the results area, a small branded link: `"powered by vibezap.dev/<route>"` or `"<verb> by vibezap.dev/<route>"`. Customize the verb/emoji per app.
+4. **Legal disclaimer** — Bottom of component. Required on every tool page. See CLAUDE.md "Legal Compliance" section.
 
 ### Styling Convention
 - All styles are inline via React `style` props
@@ -167,7 +176,7 @@ Vercel auto-deploys. Check the deployment at https://vercel.com/dashboard.
 - [ ] API endpoint created (if needed)
 - [ ] Env vars added to Vercel (if new ones needed)
 - [ ] Tool card added/updated in `VibeZapLanding.jsx`
-- [ ] **Legal disclaimer present** in component (included in template by default)
+- [ ] **All standard UI elements present** (back nav, header text, result watermark, legal disclaimer — all included in template)
 - [ ] CLAUDE.md micro-apps registry updated
 - [ ] `npm run build` passes
 - [ ] Tested locally with `npm run preview` or `vercel dev`

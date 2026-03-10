@@ -91,6 +91,8 @@ vibezap-landing/
 | 4 | TLDR Contract | `/tldr-contract` | — | Planned | $3 |
 | 5 | 365 Social Posts | `/social-posts` | — | Planned | $15 |
 | 6 | Vibe Check Email | `/vibe-check` | — | Planned | $2 |
+| 7 | Brand Kit in a Box | `/brand-kit` | — | Planned | $15 |
+| 8 | Kids Story Creator | `/kids-story` | — | Planned | $9 |
 
 ## Critical Rules — Follow These Every Time
 
@@ -246,11 +248,11 @@ try {
 See [docs/micro-app-guide.md](docs/micro-app-guide.md) for the full template and steps.
 
 Quick summary:
-1. Create `src/apps/<app-name>/` folder with `<AppName>.jsx` and `README.md`
+1. Copy `src/apps/_template/TemplateApp.jsx` to `src/apps/<app-name>/<AppName>.jsx` (includes all required UI elements: back nav, header, watermark, disclaimer)
 2. Add route in `App.jsx`
 3. Add API endpoint in `api/<name>.js` (if needed)
 4. Add tool card in `VibeZapLanding.jsx` tools array
-5. **Add the legal disclaimer** to the bottom of the component (see Legal Compliance below)
+5. **Verify all 4 standard UI elements** are present (see Legal Compliance below)
 6. Update the Micro-Apps Registry table above
 
 ## Legal Compliance
@@ -262,7 +264,16 @@ All tool pages must include legal elements. These are already wired up globally 
 - **LegalFooter** (`src/LegalFooter.jsx`) — "Terms of Service · Privacy Policy" links rendered on every page via `App.jsx`.
 
 ### Per-tool (must be added to every new micro-app)
-- **Inline disclaimer** — Add this JSX block just before the final closing `</div>` of your component:
+
+All of these are included in `_template/TemplateApp.jsx` — copy from template to get them automatically.
+
+1. **"← Back to VibeZap" nav** — Top of page. Uses `useNavigate()` from react-router-dom to navigate to `/`. Style: Space Mono font, `rgba(255,255,255,0.35)` default color, cyan `#00E5FF` on hover.
+
+2. **"vibezap.dev presents" header** — Subtle uppercase text above the app title. Style: Space Mono, `rgba(255,255,255,0.35)`, `letterSpacing: '4px'`, `textTransform: 'uppercase'`.
+
+3. **Result watermark** — Inside the results display area. A small branded link like `"powered by vibezap.dev/<route>"`. Customize the verb and emoji per app (e.g., "roasted by", "scanned with", "crafted with").
+
+4. **Inline disclaimer** — Bottom of component, just before the final closing `</div>`:
 
 ```jsx
 {/* Legal disclaimer */}
@@ -271,8 +282,6 @@ All tool pages must include legal elements. These are already wired up globally 
   <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: '#777', textDecoration: 'underline' }}>Terms of Service</a>.
 </div>
 ```
-
-The `_template/TemplateApp.jsx` already includes this disclaimer — new apps copied from the template get it automatically.
 
 ### Static legal pages
 - `public/terms.html` — Terms of Service

@@ -332,6 +332,20 @@ export default function VibeZapLanding() {
       price: "$2",
       tag: "Coming Soon",
     },
+    {
+      icon: "\uD83C\uDFA8",
+      title: "Brand Kit in a Box",
+      description: "Enter your business name and vibe. Get logo concepts, color palette, font pairing, social templates, and a brand guidelines PDF.",
+      price: "$15",
+      tag: "Coming Soon",
+    },
+    {
+      icon: "\uD83D\uDCD6",
+      title: "Kids Story Creator",
+      description: "Enter your child\u2019s name, interests, and a moral. Get a personalized illustrated children\u2019s story as a beautiful PDF.",
+      price: "$9",
+      tag: "Coming Soon",
+    },
   ];
 
   return (

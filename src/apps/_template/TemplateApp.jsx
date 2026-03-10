@@ -67,17 +67,26 @@ export default function TemplateApp() {
         <button
           onClick={() => navigate('/')}
           style={{
-            background: 'none', border: 'none', color: THEME.textMuted,
-            cursor: 'pointer', fontSize: '14px', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', gap: '8px'
+            background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)',
+            cursor: 'pointer', fontSize: '13px', fontFamily: "'Space Mono', monospace",
+            letterSpacing: '0.5px', padding: 0, transition: 'color 0.2s ease',
           }}
+          onMouseEnter={(e) => e.target.style.color = '#00E5FF'}
+          onMouseLeave={(e) => e.target.style.color = 'rgba(255,255,255,0.35)'}
         >
-          ← Back to VibeZap
+          &larr; Back to VibeZap
         </button>
       </div>
 
       {/* Hero */}
-      <div style={{ textAlign: 'center', padding: '60px 20px 40px' }}>
+      <div style={{ textAlign: 'center', padding: '40px 20px 40px' }}>
+        <div style={{
+          fontSize: '13px', fontFamily: "'Space Mono', monospace",
+          color: 'rgba(255,255,255,0.35)', letterSpacing: '4px',
+          textTransform: 'uppercase', marginBottom: '16px',
+        }}>
+          vibezap.dev presents
+        </div>
         <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', fontFamily: 'Syne, sans-serif', fontWeight: 800, marginBottom: '16px' }}>
           Your Tool Name
         </h1>

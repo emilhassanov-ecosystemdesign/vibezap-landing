@@ -28,6 +28,12 @@
     },
     "api/land-design-report.js": {
       "maxDuration": 120
+    },
+    "api/mockup.js": {
+      "maxDuration": 30
+    },
+    "api/mockup-bulk.js": {
+      "maxDuration": 120
     }
   }
 }

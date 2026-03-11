@@ -328,9 +328,11 @@ export default function VibeZapLanding() {
     {
       icon: "\uD83D\uDCF1",
       title: "Screenshot \u2192 Mockup",
-      description: "Upload any screenshot. Get it placed in a gorgeous device mockup \u2014 phones, laptops, tablets. Download instantly.",
-      price: "$3",
-      tag: "Coming Soon",
+      description: "Paste any URL. Get it placed in a gorgeous device mockup \u2014 phones, laptops, tablets. Download instantly.",
+      price: "Free / $2.99",
+      tag: "Live",
+      tagColor: "#4ade80",
+      link: "/mockup",
     },
     {
       icon: "\uD83D\uDCDC",

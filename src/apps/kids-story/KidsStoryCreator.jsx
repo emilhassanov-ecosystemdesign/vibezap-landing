@@ -134,7 +134,7 @@ function LoadingSpinner() {
   )
 }
 
-function StoryDisplay({ result, childName }) {
+function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdfError, reportProgress, emailStatus, pollingTimedOut, popupBlocked, handleGetReport, handleCancelPayment, checkPaymentNow, handleReportGeneration, orderIdRef, CHECKOUT_URL }) {
   const storyRef = useRef(null)
 
   const highlightName = (text) => {
@@ -1039,7 +1039,23 @@ export default function KidsStoryCreator() {
         {/* Results */}
         {result && (
           <div ref={reportRef}>
-            <StoryDisplay result={result} childName={childName} />
+            <StoryDisplay
+              result={result}
+              childName={childName}
+              paymentProcessing={paymentProcessing}
+              pdfGenerating={pdfGenerating}
+              pdfError={pdfError}
+              reportProgress={reportProgress}
+              emailStatus={emailStatus}
+              pollingTimedOut={pollingTimedOut}
+              popupBlocked={popupBlocked}
+              handleGetReport={handleGetReport}
+              handleCancelPayment={handleCancelPayment}
+              checkPaymentNow={checkPaymentNow}
+              handleReportGeneration={handleReportGeneration}
+              orderIdRef={orderIdRef}
+              CHECKOUT_URL={CHECKOUT_URL}
+            />
             <div style={{ textAlign: 'center', padding: '0 20px 40px' }}>
               <button
                 onClick={handleReset}

@@ -337,39 +337,181 @@ function StoryDisplay({ result, childName }) {
             ))}
           </div>
 
-          <button
-            style={{
-              padding: '16px 40px',
-              fontSize: 16,
-              fontWeight: 700,
-              fontFamily: "'Syne', sans-serif",
-              background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.warm})`,
-              color: '#0a0a0b',
-              border: 'none',
-              borderRadius: 12,
-              cursor: 'pointer',
-              letterSpacing: '0.5px',
-              boxShadow: `0 4px 24px ${THEME.accentGlow}`,
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={e => {
-              e.target.style.transform = 'translateY(-2px)'
-              e.target.style.boxShadow = `0 8px 32px ${THEME.accentGlow}`
-            }}
-            onMouseLeave={e => {
-              e.target.style.transform = 'translateY(0)'
-              e.target.style.boxShadow = `0 4px 24px ${THEME.accentGlow}`
-            }}
-          >
-            Get Full Story — $9
-          </button>
+          {!paymentProcessing && !pdfGenerating && (
+            <button
+              onClick={handleGetReport}
+              style={{
+                padding: '16px 40px',
+                fontSize: 16,
+                fontWeight: 700,
+                fontFamily: "'Syne', sans-serif",
+                background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.warm})`,
+                color: '#0a0a0b',
+                border: 'none',
+                borderRadius: 12,
+                cursor: 'pointer',
+                letterSpacing: '0.5px',
+                boxShadow: `0 4px 24px ${THEME.accentGlow}`,
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={e => {
+                e.target.style.transform = 'translateY(-2px)'
+                e.target.style.boxShadow = `0 8px 32px ${THEME.accentGlow}`
+              }}
+              onMouseLeave={e => {
+                e.target.style.transform = 'translateY(0)'
+                e.target.style.boxShadow = `0 4px 24px ${THEME.accentGlow}`
+              }}
+            >
+              Get Full Story — $9
+            </button>
+          )}
 
-          <div style={{
-            marginTop: 14, fontSize: 12, color: THEME.textDim,
-            fontFamily: "'Space Mono', monospace",
-          }}>
-            One-time purchase  ·  Instant delivery
-          </div>
+          {/* Payment processing state */}
+          {paymentProcessing && !pdfGenerating && (
+            <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
+              <div style={{
+                padding: '16px 24px',
+                background: 'rgba(255,217,61,0.06)',
+                border: `1px solid rgba(255,217,61,0.15)`,
+                borderRadius: 12,
+                marginBottom: 16,
+              }}>
+                <div style={{
+                  fontSize: 14, color: THEME.textMuted,
+                  fontFamily: "'Outfit', sans-serif", marginBottom: 8,
+                }}>
+                  {popupBlocked
+                    ? "Your browser blocked the checkout window. Use the link below to complete payment."
+                    : "Complete payment in the checkout window..."}
+                </div>
+                {popupBlocked && (
+                  <a
+                    href={CHECKOUT_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: THEME.accent, fontSize: 13,
+                      fontFamily: "'Space Mono', monospace",
+                    }}
+                  >
+                    Open checkout manually &rarr;
+                  </a>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <button
+                  onClick={checkPaymentNow}
+                  style={{
+                    padding: '10px 20px', fontSize: 13,
+                    fontFamily: "'Outfit', sans-serif",
+                    background: 'rgba(255,217,61,0.1)',
+                    border: `1px solid rgba(255,217,61,0.2)`,
+                    color: THEME.accent, borderRadius: 8,
+                    cursor: 'pointer',
+                  }}
+                >
+                  I've already paid
+                </button>
+                <button
+                  onClick={handleCancelPayment}
+                  style={{
+                    padding: '10px 20px', fontSize: 13,
+                    fontFamily: "'Outfit', sans-serif",
+                    background: 'none',
+                    border: `1px solid ${THEME.border}`,
+                    color: THEME.textMuted, borderRadius: 8,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {pollingTimedOut && (
+                <div style={{
+                  marginTop: 12, fontSize: 12, color: '#ff6b6b',
+                  fontFamily: "'Outfit', sans-serif",
+                }}>
+                  Payment check timed out. If you've paid, click "I've already paid" above or contact hello@vibezap.dev.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Report generation progress */}
+          {pdfGenerating && (
+            <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 12, marginBottom: 8,
+              }}>
+                <div style={{
+                  width: 20, height: 20,
+                  border: `2px solid ${THEME.border}`,
+                  borderTopColor: THEME.accent,
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                <span style={{
+                  fontSize: 14, color: THEME.textMuted,
+                  fontFamily: "'Outfit', sans-serif",
+                }}>
+                  {reportProgress?.message || 'Preparing your storybook...'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* PDF error */}
+          {pdfError && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{
+                fontSize: 13, color: '#ff6b6b', marginBottom: 12,
+                fontFamily: "'Outfit', sans-serif",
+              }}>
+                {pdfError}
+              </div>
+              {orderIdRef.current && (
+                <button
+                  onClick={() => handleReportGeneration(orderIdRef.current)}
+                  style={{
+                    padding: '10px 20px', fontSize: 13,
+                    fontFamily: "'Outfit', sans-serif",
+                    background: 'rgba(255,217,61,0.1)',
+                    border: `1px solid rgba(255,217,61,0.2)`,
+                    color: THEME.accent, borderRadius: 8,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Try Again
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Email status */}
+          {emailStatus && (
+            <div style={{
+              marginTop: 12, fontSize: 12,
+              fontFamily: "'Outfit', sans-serif",
+              color: emailStatus.sent ? '#4ade80' : THEME.textDim,
+            }}>
+              {emailStatus.sent
+                ? `PDF sent to ${emailStatus.address}`
+                : emailStatus.address
+                  ? `Email to ${emailStatus.address} failed — your PDF was downloaded above`
+                  : null}
+            </div>
+          )}
+
+          {!paymentProcessing && !pdfGenerating && !pdfError && (
+            <div style={{
+              marginTop: 14, fontSize: 12, color: THEME.textDim,
+              fontFamily: "'Space Mono', monospace",
+            }}>
+              One-time purchase  ·  Instant delivery
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -387,13 +529,219 @@ export default function KidsStoryCreator() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
 
+  // Paid flow state
+  const [paymentProcessing, setPaymentProcessing] = useState(false)
+  const [popupBlocked, setPopupBlocked] = useState(false)
+  const [pollingTimedOut, setPollingTimedOut] = useState(false)
+  const [pdfGenerating, setPdfGenerating] = useState(false)
+  const [pdfError, setPdfError] = useState(null)
+  const [reportProgress, setReportProgress] = useState(null)
+  const [emailStatus, setEmailStatus] = useState(null)
+
+  const orderIdRef = useRef(null)
+  const pollIntervalRef = useRef(null)
+  const checkoutOpenedAtRef = useRef(null)
+  const reportRef = useRef(null)
+
+  const CHECKOUT_URL = "https://vibezap.lemonsqueezy.com/checkout/buy/90aa36c0-9db9-4e6c-b678-a1531a527743"
+
   const canSubmit = childName.trim() && age && interests.trim() && !loading
+
+  // ── Payment polling ───────────────────────────────────────────────
+
+  const stopPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }
+
+  const startPaymentPolling = () => {
+    stopPolling()
+    setPollingTimedOut(false)
+    const afterTs = new Date().toISOString()
+    checkoutOpenedAtRef.current = afterTs
+    let attempts = 0
+    const maxAttempts = 60
+
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++
+      if (attempts > maxAttempts) {
+        stopPolling()
+        setPollingTimedOut(true)
+        return
+      }
+      try {
+        const resp = await fetch(`/api/check-payment?product=kids-story&after=${encodeURIComponent(afterTs)}`)
+        const data = await resp.json()
+        if (data.found && data.orderId) {
+          stopPolling()
+          setPaymentProcessing(false)
+          setPopupBlocked(false)
+          orderIdRef.current = String(data.orderId)
+          handleReportGeneration(String(data.orderId))
+        }
+      } catch (_) { /* silent retry */ }
+    }, 3000)
+  }
+
+  const checkPaymentNow = async () => {
+    const afterTs = checkoutOpenedAtRef.current || new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    try {
+      const resp = await fetch(`/api/check-payment?product=kids-story&after=${encodeURIComponent(afterTs)}`)
+      const data = await resp.json()
+      if (data.found && data.orderId) {
+        stopPolling()
+        setPaymentProcessing(false)
+        setPopupBlocked(false)
+        orderIdRef.current = String(data.orderId)
+        handleReportGeneration(String(data.orderId))
+      }
+    } catch (_) { /* silent */ }
+  }
+
+  useEffect(() => {
+    return () => stopPolling()
+  }, [])
+
+  // ── Checkout + SSE report generation ──────────────────────────────
+
+  const handleGetReport = () => {
+    setPaymentProcessing(true)
+    setPdfError(null)
+    setPopupBlocked(false)
+    setPollingTimedOut(false)
+
+    const win = window.open(CHECKOUT_URL, "_blank")
+    if (!win) {
+      setPopupBlocked(true)
+    }
+    startPaymentPolling()
+  }
+
+  const handleCancelPayment = () => {
+    stopPolling()
+    setPaymentProcessing(false)
+    setPopupBlocked(false)
+    setPollingTimedOut(false)
+  }
+
+  function downloadPdfFromBase64(base64, filename) {
+    const binaryString = atob(base64)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    const blob = new Blob([bytes], { type: "application/pdf" })
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = blobUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  }
+
+  const handleReportGeneration = async (oid) => {
+    setPdfGenerating(true)
+    setPdfError(null)
+    setReportProgress(null)
+    setEmailStatus(null)
+
+    try {
+      const response = await fetch("/api/kids-story-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          childName: childName.trim(),
+          age: parseInt(age, 10),
+          interests: interests.trim(),
+          moral: moral.trim() || undefined,
+          style: storyStyle,
+          orderId: oid,
+        }),
+      })
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || "Failed to generate story")
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const messages = buffer.split("\n\n")
+        buffer = messages.pop()
+
+        for (const msg of messages) {
+          if (!msg.trim() || msg.startsWith(":")) continue
+
+          const eventMatch = msg.match(/^event:\s*(.+)$/m)
+          const dataMatch = msg.match(/^data:\s*(.+)$/m)
+          if (!eventMatch || !dataMatch) continue
+
+          const eventType = eventMatch[1].trim()
+          let eventData
+          try { eventData = JSON.parse(dataMatch[1]) } catch { continue }
+
+          switch (eventType) {
+            case "progress":
+              setReportProgress(eventData)
+              break
+            case "story":
+              setResult(prev => ({
+                ...prev,
+                isPreview: false,
+                title: eventData.story.title,
+                fullStory: eventData.story,
+                hasIllustrations: eventData.hasIllustrations,
+              }))
+              setTimeout(() => {
+                reportRef.current?.scrollIntoView({ behavior: "smooth" })
+              }, 400)
+              break
+            case "pdf":
+              downloadPdfFromBase64(
+                eventData.pdfBase64,
+                eventData.pdfFilename || "kids-story.pdf"
+              )
+              break
+            case "email":
+              setEmailStatus(eventData)
+              break
+            case "error":
+              throw new Error(eventData.error)
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Story report error:", err)
+      setPdfError(err.message || "Something went wrong generating your storybook.")
+    } finally {
+      setPdfGenerating(false)
+      setReportProgress(null)
+    }
+  }
+
+  // ── Free preview ──────────────────────────────────────────────────
 
   const handleSubmit = async () => {
     if (!canSubmit) return
     setLoading(true)
     setError('')
     setResult(null)
+    setPaymentProcessing(false)
+    setPdfGenerating(false)
+    setPdfError(null)
+    setEmailStatus(null)
+    orderIdRef.current = null
 
     try {
       const res = await fetch('/api/kids-story', {
@@ -425,6 +773,11 @@ export default function KidsStoryCreator() {
   const handleReset = () => {
     setResult(null)
     setError('')
+    setPaymentProcessing(false)
+    setPdfGenerating(false)
+    setPdfError(null)
+    setEmailStatus(null)
+    orderIdRef.current = null
   }
 
   const inputStyle = {
@@ -685,7 +1038,7 @@ export default function KidsStoryCreator() {
 
         {/* Results */}
         {result && (
-          <>
+          <div ref={reportRef}>
             <StoryDisplay result={result} childName={childName} />
             <div style={{ textAlign: 'center', padding: '0 20px 40px' }}>
               <button
@@ -713,7 +1066,7 @@ export default function KidsStoryCreator() {
                 Create Another Story
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* Legal disclaimer */}

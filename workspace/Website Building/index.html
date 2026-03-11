@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecosystem Design — Saving the Planet, One Ecosystem at a Time</title>
+<meta name="description" content="Permaculture design community and blog. Learn to design with nature through courses, articles, and a thriving global community.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Anybody:wght@300;400;500&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   ECOSYSTEM DESIGN — Botanical Editorial
+   ═══════════════════════════════════════ */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Greens — from the earth */
+  --moss: #4a6741;
+  --fern: #5a7d50;
+  --leaf: #6B8E23;
+  --spring: #8BC34A;
+  --meadow: #7CB342;
+  --canopy: #2E7D32;
+  --forest: #1B5E20;
+  --sage: #a8b99c;
+  --mint: #e8f0e4;
+
+  /* Earth tones */
+  --bark: #3E3A36;
+  --soil: #5D4E37;
+  --clay: #8B7355;
+  --sand: #C4B69C;
+  --cream: #FAF7F2;
+  --parchment: #F5F0E8;
+  --linen: #FDFCF9;
+
+  /* Accents */
+  --sunlight: #E8B931;
+  --terracotta: #C87941;
+
+  /* Typography */
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body: 'Anybody', system-ui, sans-serif;
+  --font-hand: 'Caveat', cursive;
+
+  /* Spacing */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 2rem;
+  --space-lg: 4rem;
+  --space-xl: 6rem;
+  --space-2xl: 8rem;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  font-weight: 300;
+  color: var(--bark);
+  background: var(--linen);
+  line-height: 1.7;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Utility */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+/* ─── NAVIGATION ─── */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 0.8rem 0;
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  background: transparent;
+}
+
+.nav.scrolled {
+  background: rgba(253, 252, 249, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 30px rgba(74, 103, 65, 0.08);
+  padding: 0.5rem 0;
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-decoration: none;
+  color: var(--bark);
+}
+
+.nav-brand img {
+  height: 44px;
+  width: auto;
+  transition: transform 0.3s ease;
+}
+
+.nav-brand:hover img { transform: scale(1.05) rotate(-2deg); }
+
+.nav-brand-text {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.nav.scrolled .nav-brand-text { color: var(--forest); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  list-style: none;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--bark);
+  font-size: 0.88rem;
+  font-weight: 400;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  transition: all 0.3s ease;
+  letter-spacing: 0.02em;
+}
+
+.nav-links a:hover {
+  background: rgba(74, 103, 65, 0.08);
+  color: var(--canopy);
+}
+
+.nav-links .nav-cta {
+  background: var(--canopy);
+  color: white;
+  margin-left: 0.5rem;
+  padding: 0.5rem 1.3rem;
+  font-weight: 500;
+}
+
+.nav-links .nav-cta:hover {
+  background: var(--forest);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+}
+
+/* Hamburger */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  z-index: 1001;
+}
+
+.nav-toggle span {
+  width: 24px;
+  height: 2px;
+  background: var(--bark);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.nav-toggle.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.nav-toggle.active span:nth-child(2) { opacity: 0; }
+.nav-toggle.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+/* ─── HERO SECTION ─── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(175deg, var(--linen) 0%, var(--mint) 40%, #d4e8c7 70%, #b5d6a0 100%);
+}
+
+/* Organic background shapes */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -15%;
+  width: 70vw;
+  height: 70vw;
+  max-width: 900px;
+  max-height: 900px;
+  border-radius: 42% 58% 65% 35% / 45% 55% 45% 55%;
+  background: radial-gradient(ellipse at 30% 40%, rgba(139, 195, 74, 0.15), rgba(46, 125, 50, 0.08));
+  animation: morphBlob 20s ease-in-out infinite;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -10%;
+  left: -10%;
+  width: 50vw;
+  height: 50vw;
+  max-width: 600px;
+  max-height: 600px;
+  border-radius: 58% 42% 35% 65% / 55% 45% 55% 45%;
+  background: radial-gradient(ellipse at 60% 60%, rgba(107, 142, 35, 0.1), rgba(90, 125, 80, 0.05));
+  animation: morphBlob2 25s ease-in-out infinite;
+}
+
+@keyframes morphBlob {
+  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 55% 45% 55%; transform: rotate(0deg) scale(1); }
+  33% { border-radius: 55% 45% 40% 60% / 60% 40% 55% 45%; transform: rotate(5deg) scale(1.03); }
+  66% { border-radius: 38% 62% 55% 45% / 50% 50% 40% 60%; transform: rotate(-3deg) scale(0.98); }
+}
+
+@keyframes morphBlob2 {
+  0%, 100% { border-radius: 58% 42% 35% 65% / 55% 45% 55% 45%; transform: rotate(0deg); }
+  50% { border-radius: 45% 55% 60% 40% / 40% 60% 45% 55%; transform: rotate(-8deg); }
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+  padding: 8rem 0 6rem;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  color: var(--leaf);
+  margin-bottom: var(--space-sm);
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.3s forwards;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 6vw, 4.5rem);
+  line-height: 1.08;
+  color: var(--bark);
+  margin-bottom: var(--space-md);
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.5s forwards;
+}
+
+.hero h1 em {
+  font-style: italic;
+  color: var(--canopy);
+}
+
+.hero-description {
+  font-size: 1.15rem;
+  color: var(--soil);
+  max-width: 540px;
+  line-height: 1.8;
+  margin-bottom: var(--space-lg);
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.7s forwards;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  opacity: 0;
+  animation: fadeSlideUp 0.8s 0.9s forwards;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 2rem;
+  border-radius: 100px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  letter-spacing: 0.02em;
+}
+
+.btn-primary {
+  background: var(--canopy);
+  color: white;
+  box-shadow: 0 4px 20px rgba(46, 125, 50, 0.25);
+}
+
+.btn-primary:hover {
+  background: var(--forest);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(46, 125, 50, 0.35);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--canopy);
+  border: 1.5px solid rgba(46, 125, 50, 0.35);
+}
+
+.btn-outline:hover {
+  background: rgba(46, 125, 50, 0.06);
+  border-color: var(--canopy);
+  transform: translateY(-2px);
+}
+
+/* Floating leaves */
+.leaf-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.floating-leaf {
+  position: absolute;
+  opacity: 0;
+  animation: floatLeaf linear infinite;
+}
+
+.floating-leaf svg { width: 100%; height: 100%; }
+
+@keyframes floatLeaf {
+  0% { opacity: 0; transform: translateY(-10%) rotate(0deg) translateX(0); }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(110vh) rotate(360deg) translateX(80px); }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── WAVE DIVIDERS ─── */
+.wave-divider {
+  display: block;
+  width: 100%;
+  line-height: 0;
+  position: relative;
+  z-index: 3;
+}
+
+.wave-divider svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ─── PHILOSOPHY SECTION ─── */
+.philosophy {
+  background: var(--cream);
+  padding: var(--space-xl) 0 var(--space-2xl);
+  position: relative;
+}
+
+.section-label {
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  color: var(--leaf);
+  text-align: center;
+  margin-bottom: 0.3rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  text-align: center;
+  color: var(--bark);
+  margin-bottom: 1rem;
+  line-height: 1.15;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--soil);
+  max-width: 600px;
+  margin: 0 auto var(--space-lg);
+  font-size: 1.05rem;
+  line-height: 1.8;
+}
+
+.principles-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.principle-card {
+  background: var(--linen);
+  border-radius: 24px;
+  padding: var(--space-md) var(--space-md) var(--space-md);
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  border: 1px solid rgba(107, 142, 35, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.principle-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--spring), var(--canopy));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.principle-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 50px rgba(74, 103, 65, 0.1);
+}
+
+.principle-card:hover::before { opacity: 1; }
+
+.principle-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto var(--space-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--mint);
+  transition: transform 0.3s ease;
+}
+
+.principle-card:hover .principle-icon { transform: scale(1.08) rotate(-3deg); }
+
+.principle-icon svg {
+  width: 36px;
+  height: 36px;
+  stroke: var(--canopy);
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.principle-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--bark);
+  margin-bottom: 0.7rem;
+}
+
+.principle-card p {
+  color: var(--soil);
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+/* ─── BLOG SECTION ─── */
+.blog {
+  background: var(--linen);
+  padding: var(--space-xl) 0 var(--space-2xl);
+  position: relative;
+}
+
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.blog-card {
+  border-radius: 20px;
+  overflow: hidden;
+  background: white;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  border: 1px solid rgba(107, 142, 35, 0.06);
+}
+
+.blog-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 60px rgba(74, 103, 65, 0.1);
+}
+
+.blog-card-image {
+  height: 220px;
+  position: relative;
+  overflow: hidden;
+}
+
+.blog-card:nth-child(1) .blog-card-image {
+  background: linear-gradient(135deg, #a8d5a2 0%, #6B8E23 50%, #3d5e1e 100%);
+}
+
+.blog-card:nth-child(2) .blog-card-image {
+  background: linear-gradient(135deg, #c4d4a0 0%, #8BC34A 50%, #5a7d30 100%);
+}
+
+.blog-card:nth-child(3) .blog-card-image {
+  background: linear-gradient(135deg, #89c4d4 0%, #5a9dad 50%, #2E7D60 100%);
+}
+
+.blog-card-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 300' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='320' cy='60' r='30' fill='rgba(255,255,255,0.12)'/%3E%3Cellipse cx='200' cy='260' rx='180' ry='40' fill='rgba(255,255,255,0.06)'/%3E%3Cpath d='M80 280 Q100 180 120 280 Q100 190 80 280Z' fill='rgba(255,255,255,0.1)'/%3E%3Cpath d='M160 280 Q190 150 220 280 Q190 170 160 280Z' fill='rgba(255,255,255,0.08)'/%3E%3Cpath d='M260 280 Q280 200 300 280 Q280 210 260 280Z' fill='rgba(255,255,255,0.09)'/%3E%3C/svg%3E") center/cover no-repeat;
+  opacity: 0.7;
+}
+
+.blog-card-image .blog-tag {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  padding: 0.3rem 0.85rem;
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--canopy);
+  z-index: 1;
+  letter-spacing: 0.03em;
+}
+
+.blog-card-body {
+  padding: 1.5rem 1.5rem 1.8rem;
+}
+
+.blog-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: var(--clay);
+  margin-bottom: 0.7rem;
+}
+
+.blog-card-meta span {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.blog-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--bark);
+  margin-bottom: 0.6rem;
+  line-height: 1.3;
+  transition: color 0.3s ease;
+}
+
+.blog-card:hover h3 { color: var(--canopy); }
+
+.blog-card p {
+  color: var(--soil);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.blog-card .read-more {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--canopy);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: gap 0.3s ease;
+}
+
+.blog-card:hover .read-more { gap: 0.7rem; }
+
+.read-more-arrow {
+  transition: transform 0.3s ease;
+  font-size: 1.1rem;
+}
+
+.blog-card:hover .read-more-arrow { transform: translateX(3px); }
+
+/* ─── COURSES SECTION ─── */
+.courses {
+  background: linear-gradient(170deg, var(--forest) 0%, #1a3d1d 60%, #142e16 100%);
+  padding: var(--space-xl) 0 var(--space-2xl);
+  position: relative;
+  overflow: hidden;
+}
+
+.courses::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(139, 195, 74, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(107, 142, 35, 0.06) 0%, transparent 50%);
+}
+
+.courses .section-label { color: var(--spring); }
+.courses .section-title { color: white; }
+.courses .section-subtitle { color: rgba(255, 255, 255, 0.7); }
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+  position: relative;
+  z-index: 1;
+}
+
+.course-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: var(--space-md);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.course-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+  border-color: rgba(139, 195, 74, 0.25);
+}
+
+.course-badge {
+  display: inline-block;
+  padding: 0.3rem 0.9rem;
+  border-radius: 100px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-sm);
+}
+
+.course-card:nth-child(1) .course-badge {
+  background: rgba(139, 195, 74, 0.2);
+  color: var(--spring);
+}
+
+.course-card:nth-child(2) .course-badge {
+  background: rgba(232, 185, 49, 0.2);
+  color: var(--sunlight);
+}
+
+.course-card:nth-child(3) .course-badge {
+  background: rgba(200, 121, 65, 0.2);
+  color: var(--terracotta);
+}
+
+.course-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: white;
+  margin-bottom: 0.7rem;
+  line-height: 1.25;
+}
+
+.course-card p {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  margin-bottom: 1.2rem;
+}
+
+.course-details {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.course-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.course-detail svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--spring);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.btn-course {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: 100px;
+  background: rgba(139, 195, 74, 0.15);
+  color: var(--spring);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid rgba(139, 195, 74, 0.25);
+  transition: all 0.3s ease;
+}
+
+.btn-course:hover {
+  background: var(--spring);
+  color: var(--forest);
+  border-color: var(--spring);
+}
+
+/* ─── COMMUNITY SECTION ─── */
+.community {
+  background: var(--cream);
+  padding: var(--space-xl) 0 var(--space-2xl);
+  position: relative;
+}
+
+.community-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+  align-items: center;
+  margin-top: var(--space-lg);
+}
+
+.community-left { position: relative; }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.stat-item { text-align: center; }
+
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  color: var(--canopy);
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--clay);
+  margin-top: 0.2rem;
+  letter-spacing: 0.03em;
+}
+
+.testimonial {
+  background: var(--linen);
+  border-radius: 24px;
+  padding: var(--space-md);
+  position: relative;
+  border: 1px solid rgba(107, 142, 35, 0.08);
+}
+
+.testimonial::before {
+  content: '\201C';
+  font-family: var(--font-display);
+  font-size: 5rem;
+  color: var(--sage);
+  position: absolute;
+  top: -0.3rem;
+  left: 1.2rem;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.testimonial blockquote {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--bark);
+  line-height: 1.6;
+  margin-bottom: var(--space-sm);
+  position: relative;
+  z-index: 1;
+}
+
+.testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.testimonial-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sage), var(--canopy));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: white;
+}
+
+.testimonial-name {
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--bark);
+}
+
+.testimonial-role {
+  font-size: 0.82rem;
+  color: var(--clay);
+}
+
+/* Newsletter */
+.newsletter-box {
+  background: var(--linen);
+  border-radius: 28px;
+  padding: var(--space-md) var(--space-md) var(--space-md);
+  border: 1px solid rgba(107, 142, 35, 0.08);
+}
+
+.newsletter-box h3 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  color: var(--bark);
+  margin-bottom: 0.5rem;
+}
+
+.newsletter-box p {
+  color: var(--soil);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.newsletter-form input {
+  flex: 1;
+  padding: 0.9rem 1.3rem;
+  border-radius: 100px;
+  border: 1.5px solid rgba(107, 142, 35, 0.15);
+  background: white;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--bark);
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.newsletter-form input::placeholder { color: var(--sand); }
+.newsletter-form input:focus { border-color: var(--canopy); }
+
+.newsletter-form button {
+  padding: 0.9rem 1.8rem;
+  border-radius: 100px;
+  border: none;
+  background: var(--canopy);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.newsletter-form button:hover {
+  background: var(--forest);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+}
+
+.newsletter-hint {
+  font-size: 0.8rem;
+  color: var(--clay);
+  margin-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.newsletter-hint svg {
+  width: 14px;
+  height: 14px;
+  stroke: var(--sage);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+/* ─── FOOTER ─── */
+.footer {
+  background: var(--bark);
+  color: rgba(255, 255, 255, 0.6);
+  padding: var(--space-xl) 0 var(--space-md);
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: var(--space-sm);
+}
+
+.footer-brand img {
+  height: 40px;
+  width: auto;
+  filter: brightness(1.1);
+}
+
+.footer-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: white;
+}
+
+.footer-about p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  margin-bottom: 1.2rem;
+}
+
+.footer-social {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.footer-social a {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.footer-social a:hover {
+  background: var(--canopy);
+  transform: translateY(-2px);
+}
+
+.footer-social a svg {
+  width: 18px;
+  height: 18px;
+  fill: rgba(255, 255, 255, 0.7);
+}
+
+.footer-social a:hover svg { fill: white; }
+
+.footer h4 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: white;
+  margin-bottom: var(--space-sm);
+}
+
+.footer-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.footer-links a {
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover { color: var(--spring); }
+
+.footer-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: var(--space-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.footer-bottom a {
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+}
+
+.footer-bottom a:hover { color: var(--spring); }
+
+/* ─── SCROLL ANIMATIONS ─── */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+
+/* ─── MOBILE RESPONSIVE ─── */
+@media (max-width: 1024px) {
+  .principles-grid,
+  .blog-grid,
+  .courses-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .principles-grid > :last-child,
+  .courses-grid > :last-child {
+    grid-column: 1 / -1;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+
+  .community-content {
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .footer-about { grid-column: 1 / -1; }
+}
+
+@media (max-width: 768px) {
+  .nav-links {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 80%;
+    max-width: 320px;
+    height: 100vh;
+    background: var(--linen);
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 5rem var(--space-md) var(--space-md);
+    gap: 0;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
+    transition: right 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .nav-links.open { right: 0; }
+
+  .nav-links a {
+    padding: 0.8rem 0;
+    font-size: 1rem;
+    width: 100%;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(107, 142, 35, 0.06);
+  }
+
+  .nav-links .nav-cta {
+    margin-left: 0;
+    margin-top: var(--space-sm);
+    text-align: center;
+    justify-content: center;
+    border-radius: 100px;
+    border-bottom: none;
+  }
+
+  .nav-toggle { display: flex; }
+
+  .hero { min-height: auto; padding-top: 5rem; }
+
+  .hero-content { padding: 6rem 0 4rem; }
+
+  .hero h1 { font-size: 2.4rem; }
+
+  .principles-grid,
+  .blog-grid,
+  .courses-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .principles-grid > :last-child,
+  .courses-grid > :last-child {
+    max-width: 100%;
+  }
+
+  .blog-card-image { height: 180px; }
+
+  .stats-row { gap: 0.5rem; }
+
+  .stat-number { font-size: 2rem; }
+
+  .newsletter-form {
+    flex-direction: column;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .footer-about { grid-column: auto; }
+
+  .footer-bottom {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --space-xl: 4rem;
+    --space-2xl: 5rem;
+  }
+
+  .hero h1 { font-size: 2rem; }
+
+  .hero-description { font-size: 1rem; }
+
+  .section-title { font-size: 1.8rem; }
+
+  .btn { padding: 0.8rem 1.5rem; font-size: 0.9rem; }
+
+  .stats-row { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ─── OVERLAY for mobile nav ─── */
+.nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.nav-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+</style>
+</head>
+<body>
+
+<!-- Mobile Nav Overlay -->
+<div class="nav-overlay" id="navOverlay"></div>
+
+<!-- ═══ NAVIGATION ═══ -->
+<nav class="nav" id="mainNav">
+  <div class="nav-inner">
+    <a href="#" class="nav-brand">
+      <img src="brand_assets/tree only 400 - Copy.png" alt="Ecosystem Design logo">
+      <span class="nav-brand-text">Ecosystem Design</span>
+    </a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a href="#blog">Blog</a></li>
+      <li><a href="#courses">Courses</a></li>
+      <li><a href="#community">Community</a></li>
+      <li><a href="#contact" class="nav-cta">Get Started</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="home">
+  <div class="leaf-container" id="leafContainer"></div>
+  <div class="container">
+    <div class="hero-content">
+      <p class="hero-eyebrow">Permaculture design community &amp; journal</p>
+      <h1>Design with Nature,<br>Not <em>Against</em> It</h1>
+      <p class="hero-description">
+        We explore the art and science of working with natural systems. Join a global community learning to create abundant, resilient ecosystems through thoughtful design.
+      </p>
+      <div class="hero-actions">
+        <a href="#blog" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Explore the Blog
+        </a>
+        <a href="#community" class="btn btn-outline">Join the Community</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Wave: Hero → Philosophy -->
+<div class="wave-divider" style="margin-top: -2px; background: linear-gradient(180deg, #b5d6a0, var(--cream));">
+  <svg viewBox="0 0 1440 100" preserveAspectRatio="none" style="display:block;">
+    <path d="M0,40 C360,100 720,0 1080,60 C1260,80 1380,30 1440,50 L1440,0 L0,0 Z" fill="#b5d6a0"/>
+  </svg>
+</div>
+
+<!-- ═══ PHILOSOPHY ═══ -->
+<section class="philosophy" id="about">
+  <div class="container">
+    <p class="section-label reveal">Our guiding ethics</p>
+    <h2 class="section-title reveal">What is Permaculture Design?</h2>
+    <p class="section-subtitle reveal">
+      Permaculture is a design philosophy rooted in observing and replicating patterns found in nature. Everything connects. Every element serves multiple functions. Nothing is wasted.
+    </p>
+
+    <div class="principles-grid">
+      <!-- Earth Care -->
+      <div class="principle-card reveal reveal-delay-1">
+        <div class="principle-icon">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2C8 6 6 10 8 14c2 4 6 5 4 8"/>
+            <path d="M12 2c4 4 6 8 4 12-2 4-6 5-4 8"/>
+          </svg>
+        </div>
+        <h3>Earth Care</h3>
+        <p>Nurturing the soil, water, and living systems that sustain all life. We design to regenerate, not deplete, the natural world around us.</p>
+      </div>
+
+      <!-- People Care -->
+      <div class="principle-card reveal reveal-delay-2">
+        <div class="principle-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <h3>People Care</h3>
+        <p>Supporting each other in creating resilient, self-sufficient communities. When people thrive, ecosystems flourish alongside them.</p>
+      </div>
+
+      <!-- Fair Share -->
+      <div class="principle-card reveal reveal-delay-3">
+        <div class="principle-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+            <path d="M12 13V8"/>
+            <path d="M9 10l3-3 3 3"/>
+            <circle cx="12" cy="16" r="0.5" fill="currentColor"/>
+          </svg>
+        </div>
+        <h3>Fair Share</h3>
+        <p>Setting limits to consumption and redistributing surplus. Abundance is not hoarded — it circulates, feeds back, and multiplies.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Wave: Philosophy → Blog -->
+<div class="wave-divider" style="background: var(--linen);">
+  <svg viewBox="0 0 1440 80" preserveAspectRatio="none" style="display:block;">
+    <path d="M0,0 L0,40 Q360,80 720,40 Q1080,0 1440,40 L1440,0 Z" fill="var(--cream)"/>
+  </svg>
+</div>
+
+<!-- ═══ BLOG ═══ -->
+<section class="blog" id="blog">
+  <div class="container">
+    <p class="section-label reveal">From the journal</p>
+    <h2 class="section-title reveal">Latest from the Blog</h2>
+    <p class="section-subtitle reveal">
+      Field notes, design guides, and seasonal wisdom from practitioners around the world.
+    </p>
+
+    <div class="blog-grid">
+      <article class="blog-card reveal reveal-delay-1">
+        <div class="blog-card-image">
+          <span class="blog-tag">Food Forests</span>
+        </div>
+        <div class="blog-card-body">
+          <div class="blog-card-meta">
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Feb 12, 2026
+            </span>
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              8 min read
+            </span>
+          </div>
+          <h3>Seven Layers of a Food Forest: A Beginner's Blueprint</h3>
+          <p>Understanding the canopy, understory, shrub, herbaceous, ground cover, vine, and root layers that create a self-sustaining ecosystem.</p>
+          <a href="#" class="read-more">Read more <span class="read-more-arrow">&rarr;</span></a>
+        </div>
+      </article>
+
+      <article class="blog-card reveal reveal-delay-2">
+        <div class="blog-card-image">
+          <span class="blog-tag">Companion Planting</span>
+        </div>
+        <div class="blog-card-body">
+          <div class="blog-card-meta">
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Jan 28, 2026
+            </span>
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              6 min read
+            </span>
+          </div>
+          <h3>The Three Sisters and Beyond: Companion Planting Guilds</h3>
+          <p>How Indigenous planting wisdom pairs with modern permaculture to create plant communities that nurture and protect one another.</p>
+          <a href="#" class="read-more">Read more <span class="read-more-arrow">&rarr;</span></a>
+        </div>
+      </article>
+
+      <article class="blog-card reveal reveal-delay-3">
+        <div class="blog-card-image">
+          <span class="blog-tag">Water Systems</span>
+        </div>
+        <div class="blog-card-body">
+          <div class="blog-card-meta">
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Jan 15, 2026
+            </span>
+            <span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              10 min read
+            </span>
+          </div>
+          <h3>Designing Swales and Rain Gardens for Water Harvesting</h3>
+          <p>Slow it, spread it, sink it. Practical earthworks techniques to capture rainfall and transform dry landscapes into living sponges.</p>
+          <a href="#" class="read-more">Read more <span class="read-more-arrow">&rarr;</span></a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- Wave: Blog → Courses -->
+<div class="wave-divider" style="background: var(--linen);">
+  <svg viewBox="0 0 1440 100" preserveAspectRatio="none" style="display:block;">
+    <path d="M0,60 C240,20 480,80 720,40 C960,0 1200,70 1440,30 L1440,100 L0,100 Z" fill="var(--forest)"/>
+  </svg>
+</div>
+
+<!-- ═══ COURSES ═══ -->
+<section class="courses" id="courses">
+  <div class="container">
+    <p class="section-label reveal">Learn with us</p>
+    <h2 class="section-title reveal">Courses &amp; Workshops</h2>
+    <p class="section-subtitle reveal">
+      Hands-on learning rooted in real landscapes. From your first garden bed to a full permaculture design certificate.
+    </p>
+
+    <div class="courses-grid">
+      <div class="course-card reveal reveal-delay-1">
+        <span class="course-badge">Certification</span>
+        <h3>Permaculture Design Certificate (PDC)</h3>
+        <p>The internationally recognised 72-hour course covering design methodology, pattern literacy, soil science, water systems, and community resilience.</p>
+        <div class="course-details">
+          <span class="course-detail">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            12 Weeks
+          </span>
+          <span class="course-detail">
+            <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Comprehensive
+          </span>
+        </div>
+        <a href="#" class="btn-course">Learn More &rarr;</a>
+      </div>
+
+      <div class="course-card reveal reveal-delay-2">
+        <span class="course-badge">Masterclass</span>
+        <h3>Food Forest Masterclass</h3>
+        <p>Design, plant, and maintain a multi-layered food forest. Covers species selection, guild building, succession planting, and long-term stewardship.</p>
+        <div class="course-details">
+          <span class="course-detail">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            6 Weeks
+          </span>
+          <span class="course-detail">
+            <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Intermediate
+          </span>
+        </div>
+        <a href="#" class="btn-course">Learn More &rarr;</a>
+      </div>
+
+      <div class="course-card reveal reveal-delay-3">
+        <span class="course-badge">Workshop</span>
+        <h3>Soil Building Workshop</h3>
+        <p>Get your hands in the dirt. Learn composting, sheet mulching, biochar, microbial inoculants, and no-dig techniques to build living soil.</p>
+        <div class="course-details">
+          <span class="course-detail">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            3 Weeks
+          </span>
+          <span class="course-detail">
+            <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Beginner
+          </span>
+        </div>
+        <a href="#" class="btn-course">Learn More &rarr;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Wave: Courses → Community -->
+<div class="wave-divider" style="background: var(--cream);">
+  <svg viewBox="0 0 1440 100" preserveAspectRatio="none" style="display:block;">
+    <path d="M0,40 C360,90 720,10 1080,60 C1260,80 1380,20 1440,50 L1440,0 L0,0 Z" fill="var(--forest)"/>
+  </svg>
+</div>
+
+<!-- ═══ COMMUNITY ═══ -->
+<section class="community" id="community">
+  <div class="container">
+    <p class="section-label reveal">Grow with us</p>
+    <h2 class="section-title reveal">Join Our Growing Community</h2>
+    <p class="section-subtitle reveal">
+      Thousands of designers, growers, and dreamers sharing knowledge across continents.
+    </p>
+
+    <div class="community-content">
+      <div class="community-left">
+        <div class="stats-row reveal">
+          <div class="stat-item">
+            <div class="stat-number" data-target="4200">0</div>
+            <div class="stat-label">Members</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-target="320">0</div>
+            <div class="stat-label">Articles</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number" data-target="47">0</div>
+            <div class="stat-label">Countries</div>
+          </div>
+        </div>
+
+        <div class="testimonial reveal">
+          <blockquote>Ecosystem Design gave me the confidence to turn our half-acre suburban lot into a thriving food forest. Three years in and we're harvesting more than we can eat.</blockquote>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">S</div>
+            <div>
+              <div class="testimonial-name">Sarah Mitchell</div>
+              <div class="testimonial-role">PDC Graduate, Oregon</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="community-right">
+        <div class="newsletter-box reveal" id="contact">
+          <h3>Seeds of Wisdom</h3>
+          <p>Our weekly newsletter brings seasonal design tips, community stories, and new articles straight to your inbox. No spam — just good soil for thought.</p>
+          <form class="newsletter-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Welcome aboard!'; this.querySelector('input').value='';">
+            <input type="email" placeholder="your@email.com" required aria-label="Email address">
+            <button type="submit">Subscribe</button>
+          </form>
+          <p class="newsletter-hint">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            No spam, ever. Unsubscribe anytime.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Wave: Community → Footer -->
+<div class="wave-divider" style="background: var(--bark);">
+  <svg viewBox="0 0 1440 80" preserveAspectRatio="none" style="display:block;">
+    <path d="M0,0 L0,30 Q360,80 720,30 Q1080,-10 1440,40 L1440,0 Z" fill="var(--cream)"/>
+  </svg>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-about">
+        <div class="footer-brand">
+          <img src="brand_assets/tree only 400 - Copy.png" alt="Ecosystem Design">
+          <span class="footer-brand-name">Ecosystem Design</span>
+        </div>
+        <p>Saving the planet — one ecosystem at a time. A community dedicated to regenerative design, permaculture education, and building a thriving future.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" ry="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="rgba(255,255,255,0.7)" stroke="none"/></svg>
+          </a>
+          <a href="#" aria-label="YouTube">
+            <svg viewBox="0 0 24 24"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.4 19.6C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><path d="M9.75 15.02l5.75-3.27-5.75-3.27v6.54z" fill="#3E3A36"/></svg>
+          </a>
+          <a href="#" aria-label="Facebook">
+            <svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <h4>Explore</h4>
+        <ul class="footer-links">
+          <li><a href="#blog">Blog</a></li>
+          <li><a href="#courses">Courses</a></li>
+          <li><a href="#">Plant Database</a></li>
+          <li><a href="#">Design Gallery</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4>Community</h4>
+        <ul class="footer-links">
+          <li><a href="#">Forum</a></li>
+          <li><a href="#">Events</a></li>
+          <li><a href="#">Local Groups</a></li>
+          <li><a href="#">Contribute</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4>About</h4>
+        <ul class="footer-links">
+          <li><a href="#about">Our Story</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Use</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <span>&copy; 2026 Ecosystem Design. All rights reserved.</span>
+      <span>Made with care for the earth.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ═══ NAVIGATION ═══ */
+const nav = document.getElementById('mainNav');
+const navToggle = document.getElementById('navToggle');
+const navLinks = document.getElementById('navLinks');
+const navOverlay = document.getElementById('navOverlay');
+
+// Scroll effect
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+// Mobile menu
+function toggleNav() {
+  navToggle.classList.toggle('active');
+  navLinks.classList.toggle('open');
+  navOverlay.classList.toggle('active');
+  document.body.style.overflow = navLinks.classList.contains('open') ? 'hidden' : '';
+}
+
+navToggle.addEventListener('click', toggleNav);
+navOverlay.addEventListener('click', toggleNav);
+
+// Close on link click
+navLinks.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    if (navLinks.classList.contains('open')) toggleNav();
+  });
+});
+
+/* ═══ FLOATING LEAVES ═══ */
+const leafContainer = document.getElementById('leafContainer');
+const leafColors = ['#6B8E23', '#8BC34A', '#4CAF50', '#7CB342', '#9CCC65'];
+
+function createLeaf() {
+  const leaf = document.createElement('div');
+  leaf.className = 'floating-leaf';
+  const size = 12 + Math.random() * 18;
+  const left = Math.random() * 100;
+  const duration = 12 + Math.random() * 16;
+  const delay = Math.random() * 8;
+  const color = leafColors[Math.floor(Math.random() * leafColors.length)];
+
+  leaf.style.cssText = `
+    left: ${left}%;
+    width: ${size}px;
+    height: ${size}px;
+    animation-duration: ${duration}s;
+    animation-delay: ${delay}s;
+  `;
+
+  leaf.innerHTML = `<svg viewBox="0 0 24 24" fill="${color}" opacity="0.5">
+    <path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20c4 0 8.71-3.13 9-3.34A9.7 9.7 0 0 0 21 9.34 9.69 9.69 0 0 0 17 8z"/>
+  </svg>`;
+
+  leafContainer.appendChild(leaf);
+
+  // Remove after animation
+  setTimeout(() => leaf.remove(), (duration + delay) * 1000);
+}
+
+// Spawn leaves periodically
+for (let i = 0; i < 6; i++) createLeaf();
+setInterval(createLeaf, 3000);
+
+/* ═══ SCROLL REVEAL ═══ */
+const reveals = document.querySelectorAll('.reveal');
+
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, {
+  threshold: 0.15,
+  rootMargin: '0px 0px -40px 0px'
+});
+
+reveals.forEach(el => revealObserver.observe(el));
+
+/* ═══ COUNTER ANIMATION ═══ */
+const statNumbers = document.querySelectorAll('.stat-number[data-target]');
+
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseInt(el.dataset.target);
+      const duration = 2000;
+      const start = performance.now();
+
+      function animate(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.floor(eased * target);
+
+        el.textContent = current.toLocaleString() + (target >= 1000 ? '+' : '+');
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          el.textContent = target.toLocaleString() + '+';
+        }
+      }
+
+      requestAnimationFrame(animate);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+
+statNumbers.forEach(el => counterObserver.observe(el));
+</script>
+
+</body>
+</html>

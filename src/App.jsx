@@ -6,6 +6,7 @@ import RoastMyWebsite from './apps/roast-my-website/RoastMyWebsite'
 import ScamCheck from './apps/scam-check/ScamCheck'
 import LandDesign from './apps/land-design/LandDesign'
 import ScreenshotMockup from './apps/screenshot-mockup/ScreenshotMockup'
+import KidsStoryCreator from './apps/kids-story/KidsStoryCreator'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/scam-check" element={<ScamCheck />} />
           <Route path="/land-design" element={<LandDesign />} />
           <Route path="/mockup" element={<ScreenshotMockup />} />
+          <Route path="/kids-story" element={<KidsStoryCreator />} />
         </Routes>
         <LegalFooter />
       </ConsentGate>

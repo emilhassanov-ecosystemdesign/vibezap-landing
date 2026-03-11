@@ -367,7 +367,8 @@ export default function VibeZapLanding() {
       title: "Kids Story Creator",
       description: "Enter your child\u2019s name, interests, and a moral. Get a personalized illustrated children\u2019s story as a beautiful PDF.",
       price: "$9",
-      tag: "Coming Soon",
+      tag: "Live",
+      link: "/kids-story",
     },
   ];
 

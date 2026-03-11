@@ -93,7 +93,7 @@ vibezap-landing/
 | 5 | 365 Social Posts | `/social-posts` | — | Planned | $15 |
 | 6 | Vibe Check Email | `/vibe-check` | — | Planned | $2 |
 | 7 | Brand Kit in a Box | `/brand-kit` | — | Planned | $15 |
-| 8 | Kids Story Creator | `/kids-story` | — | Planned | $9 |
+| 8 | Kids Story Creator | `/kids-story` | `/api/kids-story` | **Live** | Free preview / $9 full illustrated PDF |
 
 ## Critical Rules — Follow These Every Time
 

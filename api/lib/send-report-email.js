@@ -89,6 +89,45 @@ function scamEmailHtml({ userName, verdict, riskScore, headline }) {
 </div>`;
 }
 
+function kidsStoryEmailHtml({ userName, title, childName }) {
+  const name = userName || "there";
+  return `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a;">
+  <div style="text-align: center; margin-bottom: 32px;">
+    <h1 style="color: #d4a017; font-size: 28px; margin: 0 0 8px;">Your Storybook is Ready!</h1>
+    <p style="color: #888; font-size: 14px; margin: 0;">${title || "A Magical Story"}</p>
+  </div>
+
+  <p style="font-size: 16px; line-height: 1.6;">Hi ${name},</p>
+
+  <p style="font-size: 16px; line-height: 1.6;">The personalized story for <strong>${childName}</strong> is attached as a PDF storybook.</p>
+
+  <blockquote style="border-left: 4px solid #FFD93D; padding: 12px 16px; margin: 24px 0; background: #fffef0; border-radius: 0 8px 8px 0;">
+    <p style="margin: 0; font-style: italic; color: #333; font-size: 15px;">"${title}"</p>
+  </blockquote>
+
+  <p style="font-size: 16px; line-height: 1.6;">Inside your storybook:</p>
+  <ul style="font-size: 15px; line-height: 1.8; color: #444;">
+    <li>A personalized cover page for ${childName}</li>
+    <li>8-10 illustrated story pages</li>
+    <li>${childName} as the hero of the adventure</li>
+    <li>Beautiful watercolor-style illustrations</li>
+  </ul>
+
+  <p style="font-size: 16px; line-height: 1.6;">Print it out, read it at bedtime, or share it with family!</p>
+
+  <div style="text-align: center; margin: 32px 0;">
+    <a href="https://vibezap.dev/kids-story" style="display: inline-block; background: linear-gradient(135deg, #FFD93D, #FFB347); color: #1a1a1a; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 14px;">Create Another Story</a>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+  <p style="color: #aaa; font-size: 12px; text-align: center;">
+    Created by <a href="https://vibezap.dev" style="color: #d4a017; text-decoration: none;">VibeZap.dev</a> &mdash; AI-powered micro-tools<br/>
+    This story is AI-generated for entertainment purposes.
+  </p>
+</div>`;
+}
+
 function landEmailHtml({ userName, locationName }) {
   const name = userName || "there";
   return `
@@ -146,6 +185,12 @@ export async function sendReportEmail({
         score: reportData.overall_score,
         severity: reportData.severity,
         headline: reportData.roast_headline,
+      });
+    } else if (reportType === "kids-story") {
+      htmlBody = kidsStoryEmailHtml({
+        userName,
+        title: reportData.title,
+        childName: reportData.childName || "your child",
       });
     } else if (reportType === "land") {
       htmlBody = landEmailHtml({

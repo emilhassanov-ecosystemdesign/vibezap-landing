@@ -543,7 +543,7 @@ export default function KidsStoryCreator() {
   const checkoutOpenedAtRef = useRef(null)
   const reportRef = useRef(null)
 
-  const CHECKOUT_URL = "https://vibezap.lemonsqueezy.com/checkout/buy/90aa36c0-9db9-4e6c-b678-a1531a527743"
+  const CHECKOUT_URL = "https://vibezap.lemonsqueezy.com/checkout/buy/1391156"
 
   const canSubmit = childName.trim() && age && interests.trim() && !loading
 

@@ -10,6 +10,7 @@ import puppeteer from "puppeteer-core";
  * @returns {Promise<Buffer>} PNG image buffer
  */
 export async function takeScreenshot(url, viewport) {
+  const isMobile = viewport.width <= 500;
   let browser = null;
 
   try {
@@ -19,6 +20,8 @@ export async function takeScreenshot(url, viewport) {
         width: viewport.width,
         height: viewport.height,
         deviceScaleFactor: 2, // Retina quality
+        isMobile,
+        hasTouch: isMobile,
       },
       executablePath: await chromium.executablePath(),
       headless: chromium.headless,
@@ -26,9 +29,11 @@ export async function takeScreenshot(url, viewport) {
 
     const page = await browser.newPage();
 
-    // Real Chrome user-agent to avoid bot detection
+    // Set appropriate user agent based on device type
     await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+      isMobile
+        ? "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+        : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     );
 
     await page.setExtraHTTPHeaders({

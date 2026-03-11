@@ -45,8 +45,19 @@ export async function takeScreenshot(url, viewport) {
       timeout: 15000,
     });
 
-    // Small delay to let animations/fonts settle
-    await new Promise((r) => setTimeout(r, 1000));
+    // For mobile viewports, inject mobile-optimized classes for platforms
+    // like Wix that use JS class-based responsive switching instead of CSS media queries
+    if (isMobile) {
+      await page.evaluate(() => {
+        document.body.classList.add("device-mobile-optimized");
+        document.documentElement.classList.add("device-mobile-optimized");
+        const siteRoot = document.getElementById("site-root");
+        if (siteRoot) siteRoot.classList.add("device-mobile-optimized");
+      });
+    }
+
+    // Delay to let animations/fonts/re-render settle
+    await new Promise((r) => setTimeout(r, 2000));
 
     const screenshot = await page.screenshot({
       type: "png",

@@ -350,7 +350,7 @@ export default function ScreenshotMockup() {
           {/* Upsell Card */}
           {!isPaid && (
             <div style={{
-              background: 'linear-gradient(135deg, rgba(0,229,255,0.08), rgba(255,138,0,0.08))',
+              background: 'rgba(0,229,255,0.06)',
               border: '1px solid rgba(0,229,255,0.2)',
               borderRadius: '16px', padding: '32px', marginTop: '24px',
               textAlign: 'center',
@@ -414,7 +414,7 @@ export default function ScreenshotMockup() {
                   onClick={startPayment}
                   style={{
                     padding: '14px 36px', fontSize: '16px', fontWeight: 700,
-                    background: 'linear-gradient(135deg, #00E5FF, #FF8A00)',
+                    background: '#00E5FF',
                     color: '#000', border: 'none', borderRadius: '12px',
                     cursor: 'pointer', fontFamily: 'inherit',
                   }}

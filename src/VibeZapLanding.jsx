@@ -571,11 +571,7 @@ export default function VibeZapLanding() {
                 letterSpacing: "-2px", marginBottom: "24px",
               }}>
                 One tool.{" "}
-                <span style={{
-                  background: `linear-gradient(135deg, ${brand.cyan}, ${brand.amber})`,
-                  backgroundSize: "200% 200%", animation: "gradientFlow 5s ease infinite",
-                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                }}>
+                <span style={{ color: brand.cyan }}>
                   One zap.
                 </span>
                 <br />Problem solved.

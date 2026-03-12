@@ -32,7 +32,7 @@ const apps = [
   },
   {
     id: "mockup",
-    status: "live",
+    status: "coming_soon",
     route: "/mockup",
     icon: "\uD83D\uDCF1",
     title: "Screenshot \u2192 Mockup",
@@ -41,7 +41,7 @@ const apps = [
   },
   {
     id: "kids-story",
-    status: "live",
+    status: "coming_soon",
     route: "/kids-story",
     icon: "\uD83D\uDCD6",
     title: "Kids Story Creator",

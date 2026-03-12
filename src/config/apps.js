@@ -32,7 +32,7 @@ const apps = [
   },
 {
     id: "kids-story",
-    status: "coming_soon",
+    status: "live",
     route: "/kids-story",
     icon: "\uD83D\uDCD6",
     title: "Kids Story Creator",

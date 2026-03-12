@@ -451,7 +451,7 @@ export async function POST(request) {
           return;
         }
 
-        // Consume order
+        // Consume order (or allow retry if previous attempt failed)
         sseEvent(controller, "progress", { stage: "finalizing", message: "Preparing your storybook..." });
         const isFirstUse = await consumeOrder(orderId);
         if (!isFirstUse) {
@@ -461,11 +461,8 @@ export async function POST(request) {
             controller.close();
             return;
           }
-          sseEvent(controller, "error", {
-            error: "A story has already been generated for this order. Contact hello@vibezap.dev if you need help.",
-          });
-          controller.close();
-          return;
+          // No cache means previous attempt failed — allow regeneration
+          console.log("[kids-story-report] Order already consumed but no cache found — allowing retry for order:", orderId);
         }
 
         // ── Generate illustrations ──────────────────────────────────
@@ -528,7 +525,7 @@ export async function POST(request) {
         controller.close();
       } catch (err) {
         if (heartbeatInterval) clearInterval(heartbeatInterval);
-        console.error("[kids-story-report] Stream error:", err);
+        console.error("[kids-story-report] Stream error:", err.message, err.stack);
         sseEvent(controller, "error", { error: "Failed to generate story. Please try again." });
         try { controller.close(); } catch (_) {}
       }

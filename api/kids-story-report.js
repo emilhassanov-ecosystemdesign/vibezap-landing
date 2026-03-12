@@ -1,7 +1,5 @@
-import generateStoryPdf from "./lib/generate-story-pdf.js";
 import { sendToN8n } from "./lib/n8nLogger.js";
 import { verifyOrder } from "./lib/verify-order.js";
-import { sendReportEmail, maskEmail } from "./lib/send-report-email.js";
 import { validateOrigin, getCorsHeaders } from "./lib/security.js";
 import { checkRateLimit, consumeOrder, cacheReport, getCachedReport } from "./lib/store.js";
 
@@ -335,17 +333,8 @@ export async function POST(request) {
           sseEvent(controller, "progress", { stage: "cached", message: "Loading your story..." });
           sseEvent(controller, "story", {
             story: cached.story,
+            illustrations: cached.illustrations || {},
             generatedAt: cached.generatedAt,
-          });
-          if (cached.pdfBase64) {
-            sseEvent(controller, "pdf", {
-              pdfBase64: cached.pdfBase64,
-              pdfFilename: cached.pdfFilename,
-            });
-          }
-          sseEvent(controller, "email", {
-            sent: cached.emailSent || false,
-            address: cached.emailAddress || null,
           });
           controller.close();
           return;
@@ -468,16 +457,12 @@ export async function POST(request) {
         if (!isFirstUse) {
           const cachedRetry = await getCachedReport(orderId);
           if (cachedRetry) {
-            sseEvent(controller, "story", { story: cachedRetry.story, generatedAt: cachedRetry.generatedAt });
-            if (cachedRetry.pdfBase64) {
-              sseEvent(controller, "pdf", { pdfBase64: cachedRetry.pdfBase64, pdfFilename: cachedRetry.pdfFilename });
-            }
-            sseEvent(controller, "email", { sent: cachedRetry.emailSent || false, address: cachedRetry.emailAddress || null });
+            sseEvent(controller, "story", { story: cachedRetry.story, illustrations: cachedRetry.illustrations || {}, generatedAt: cachedRetry.generatedAt });
             controller.close();
             return;
           }
           sseEvent(controller, "error", {
-            error: "A story has already been generated for this order. Check your email or contact hello@vibezap.dev.",
+            error: "A story has already been generated for this order. Contact hello@vibezap.dev if you need help.",
           });
           controller.close();
           return;
@@ -515,79 +500,26 @@ export async function POST(request) {
         }
 
         const generatedAt = new Date().toISOString();
-        const hasIllustrations = Object.keys(illustrations).length > 0;
 
-        // Send story data to browser
+        // Convert illustration buffers to base64 for frontend display
+        const illustrationBase64 = {};
+        for (const [pageNum, buffer] of Object.entries(illustrations)) {
+          illustrationBase64[pageNum] = `data:image/png;base64,${buffer.toString("base64")}`;
+        }
+
+        // Send story + illustrations to browser
         sseEvent(controller, "story", {
           story: parsed,
+          illustrations: illustrationBase64,
           generatedAt,
-          hasIllustrations,
         });
-
-        // ── PDF generation ──────────────────────────────────────────
-        let pdfBase64 = null;
-        const pdfFilename = `${childName.trim().toLowerCase().replace(/\s+/g, "-")}-story.pdf`;
-        try {
-          sseEvent(controller, "progress", { stage: "pdf", message: "Creating your PDF storybook..." });
-          const pdfBuffer = await generateStoryPdf({
-            ...parsed,
-            childName: childName.trim(),
-            illustrations,
-            generatedAt,
-          });
-          pdfBase64 = pdfBuffer.toString("base64");
-          sseEvent(controller, "pdf", { pdfBase64, pdfFilename });
-        } catch (pdfErr) {
-          console.error("[kids-story-report] PDF generation error (non-fatal):", pdfErr);
-        }
-
-        // ── Email delivery ──────────────────────────────────────────
-        let emailSent = false;
-        let emailAddress = null;
-        const resendApiKey = process.env.RESEND_API_KEY;
-        if (resendApiKey && orderCheck.userEmail && pdfBase64) {
-          try {
-            sseEvent(controller, "progress", { stage: "email", message: "Sending to your inbox..." });
-            const pdfBuffer = Buffer.from(pdfBase64, "base64");
-            const emailResult = await sendReportEmail({
-              to: orderCheck.userEmail,
-              userName: orderCheck.userName,
-              subject: `${parsed.title} — A Story for ${childName.trim()}`,
-              reportType: "kids-story",
-              reportData: { ...parsed, childName: childName.trim() },
-              pdfBuffer,
-              pdfFilename,
-              resendApiKey,
-            });
-            emailSent = emailResult.sent;
-            emailAddress = maskEmail(orderCheck.userEmail);
-            sseEvent(controller, "email", {
-              sent: emailSent,
-              address: emailAddress,
-              error: emailSent ? null : emailResult.error,
-            });
-          } catch (emailErr) {
-            console.error("[kids-story-report] Email error (non-fatal):", emailErr);
-            emailAddress = maskEmail(orderCheck.userEmail);
-            sseEvent(controller, "email", { sent: false, address: emailAddress, error: "Email delivery failed" });
-          }
-        } else if (!pdfBase64) {
-          sseEvent(controller, "email", {
-            sent: false,
-            address: orderCheck.userEmail ? maskEmail(orderCheck.userEmail) : null,
-            error: "PDF generation failed — email skipped",
-          });
-        }
 
         // ── Cache ───────────────────────────────────────────────────
         try {
           await cacheReport(orderId, {
             story: parsed,
+            illustrations: illustrationBase64,
             generatedAt,
-            pdfBase64,
-            pdfFilename,
-            emailSent,
-            emailAddress,
           });
         } catch (cacheErr) {
           console.warn("[kids-story-report] Cache write failed:", cacheErr.message);

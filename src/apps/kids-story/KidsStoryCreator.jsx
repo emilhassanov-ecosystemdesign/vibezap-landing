@@ -134,7 +134,7 @@ function LoadingSpinner() {
   )
 }
 
-function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdfError, reportProgress, emailStatus, pollingTimedOut, popupBlocked, handleGetReport, handleCancelPayment, checkPaymentNow, handleReportGeneration, orderIdRef, CHECKOUT_URL }) {
+function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdfError, reportProgress, pollingTimedOut, popupBlocked, handleGetReport, handleCancelPayment, checkPaymentNow, handleReportGeneration, orderIdRef, CHECKOUT_URL }) {
   const storyRef = useRef(null)
 
   const highlightName = (text) => {
@@ -227,7 +227,7 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
           borderRadius: 1,
         }} />
 
-        {/* Story text */}
+        {/* Story content */}
         <div style={{
           fontFamily: "'DM Sans', 'Georgia', serif",
           fontSize: 17,
@@ -235,14 +235,69 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
           color: THEME.storyText,
           textAlign: 'left',
         }}>
-          {(result.preview || result.story || '').split('\n\n').map((paragraph, i) => (
-            <p key={i} style={{
-              marginBottom: 20,
-              animation: `storyReveal 0.6s ease-out ${i * 0.15}s both`,
-            }}>
-              {highlightName(paragraph)}
-            </p>
-          ))}
+          {result.isPreview ? (
+            <>
+              {(result.preview || '').split('\n\n').map((paragraph, i) => (
+                <p key={i} style={{
+                  marginBottom: 20,
+                  animation: `storyReveal 0.6s ease-out ${i * 0.15}s both`,
+                }}>
+                  {highlightName(paragraph)}
+                </p>
+              ))}
+            </>
+          ) : result.fullStory?.pages ? (
+            result.fullStory.pages.map((page, i) => (
+              <div key={page.page_number} style={{
+                marginBottom: 36,
+                animation: `storyReveal 0.6s ease-out ${i * 0.12}s both`,
+              }}>
+                {/* Character illustration */}
+                {result.illustrations?.[page.page_number] && (
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: 20,
+                  }}>
+                    <img
+                      src={result.illustrations[page.page_number]}
+                      alt={page.illustration_character || 'Story illustration'}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: 320,
+                        borderRadius: 12,
+                        border: `1px solid rgba(255,217,61,0.15)`,
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                      }}
+                    />
+                    {page.illustration_character && (
+                      <div style={{
+                        fontSize: 12,
+                        color: THEME.textDim,
+                        fontFamily: "'Space Mono', monospace",
+                        marginTop: 8,
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                      }}>
+                        {page.illustration_character}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {page.text.split('\n\n').map((paragraph, j) => (
+                  <p key={j} style={{ marginBottom: 16 }}>
+                    {highlightName(paragraph)}
+                  </p>
+                ))}
+                {/* Page divider */}
+                {i < result.fullStory.pages.length - 1 && (
+                  <div style={{
+                    width: 40, height: 1, margin: '8px auto 0',
+                    background: `linear-gradient(90deg, transparent, rgba(255,217,61,0.3), transparent)`,
+                  }} />
+                )}
+              </div>
+            ))
+          ) : null}
         </div>
 
         {/* Preview fade-out overlay */}
@@ -312,8 +367,8 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
             fontSize: 14, color: THEME.textMuted, lineHeight: 1.6,
             maxWidth: 420, margin: '0 auto 24px',
           }}>
-            The complete story includes 8 story pages with 3 unique character illustrations, a personalized cover
-            with {childName || 'your child'}'s name, and a beautifully formatted downloadable PDF.
+            The complete story includes 8 story pages with 3 unique character illustrations
+            featuring {childName || 'your child'} and their companions.
           </p>
 
           <div style={{
@@ -323,8 +378,6 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
             {[
               { icon: '📖', text: '8 story pages' },
               { icon: '🎨', text: '3 character illustrations' },
-              { icon: '📄', text: 'PDF download' },
-              { icon: '💌', text: 'Email delivery' },
             ].map((feature, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -462,7 +515,7 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
             </div>
           )}
 
-          {/* PDF error */}
+          {/* Generation error */}
           {pdfError && (
             <div style={{ marginTop: 12 }}>
               <div style={{
@@ -486,21 +539,6 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
                   Try Again
                 </button>
               )}
-            </div>
-          )}
-
-          {/* Email status */}
-          {emailStatus && (
-            <div style={{
-              marginTop: 12, fontSize: 12,
-              fontFamily: "'Outfit', sans-serif",
-              color: emailStatus.sent ? '#4ade80' : THEME.textDim,
-            }}>
-              {emailStatus.sent
-                ? `PDF sent to ${emailStatus.address}`
-                : emailStatus.address
-                  ? `Email to ${emailStatus.address} failed — your PDF was downloaded above`
-                  : null}
             </div>
           )}
 
@@ -536,7 +574,6 @@ export default function KidsStoryCreator() {
   const [pdfGenerating, setPdfGenerating] = useState(false)
   const [pdfError, setPdfError] = useState(null)
   const [reportProgress, setReportProgress] = useState(null)
-  const [emailStatus, setEmailStatus] = useState(null)
 
   const orderIdRef = useRef(null)
   const pollIntervalRef = useRef(null)
@@ -626,23 +663,6 @@ export default function KidsStoryCreator() {
     setPollingTimedOut(false)
   }
 
-  function downloadPdfFromBase64(base64, filename) {
-    const binaryString = atob(base64)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-    const blob = new Blob([bytes], { type: "application/pdf" })
-    const blobUrl = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = blobUrl
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(blobUrl)
-  }
-
   const handleReportGeneration = async (oid) => {
     setPdfGenerating(true)
     setPdfError(null)
@@ -701,20 +721,11 @@ export default function KidsStoryCreator() {
                 isPreview: false,
                 title: eventData.story.title,
                 fullStory: eventData.story,
-                hasIllustrations: eventData.hasIllustrations,
+                illustrations: eventData.illustrations || {},
               }))
               setTimeout(() => {
                 reportRef.current?.scrollIntoView({ behavior: "smooth" })
               }, 400)
-              break
-            case "pdf":
-              downloadPdfFromBase64(
-                eventData.pdfBase64,
-                eventData.pdfFilename || "kids-story.pdf"
-              )
-              break
-            case "email":
-              setEmailStatus(eventData)
               break
             case "error":
               throw new Error(eventData.error)
@@ -1048,7 +1059,6 @@ export default function KidsStoryCreator() {
               pdfGenerating={pdfGenerating}
               pdfError={pdfError}
               reportProgress={reportProgress}
-              emailStatus={emailStatus}
               pollingTimedOut={pollingTimedOut}
               popupBlocked={popupBlocked}
               handleGetReport={handleGetReport}

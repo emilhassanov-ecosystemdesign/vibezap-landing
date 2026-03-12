@@ -855,9 +855,7 @@ export default function KidsStoryCreator() {
             fontWeight: 800,
             marginBottom: 14,
             lineHeight: 1.2,
-            background: `linear-gradient(135deg, ${THEME.text} 30%, ${THEME.accent})`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: THEME.text,
           }}>
             Kids Story Creator
           </h1>

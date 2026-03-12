@@ -574,6 +574,7 @@ export default function KidsStoryCreator() {
   const [pdfGenerating, setPdfGenerating] = useState(false)
   const [pdfError, setPdfError] = useState(null)
   const [reportProgress, setReportProgress] = useState(null)
+  const [emailStatus, setEmailStatus] = useState(null)
 
   const orderIdRef = useRef(null)
   const pollIntervalRef = useRef(null)

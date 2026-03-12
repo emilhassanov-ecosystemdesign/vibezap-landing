@@ -40,19 +40,19 @@ User enters their child's name, age, interests, and optional moral. AI generates
 }
 ```
 
-**illustration_focus values** (each must be unique across all pages):
-`protagonist`, `companion`, `creature`, `villain`, `setting`, `magical-object`, `action-scene`, `climax`
+Pages with illustrations include `has_illustration: true`, `illustration_prompt`, and `illustration_character`.
 
 ## Illustration Strategy
 
-CRITICAL: Each character appears in exactly ONE illustration to avoid cross-image consistency issues.
+Exactly 3 character illustrations per story — one per character (protagonist, companion, and one other key character).
 
-- Claude generates `illustration_prompt` + `illustration_focus` per page
-- All focus values are unique — no character rendered twice
-- Replicate Flux Schnell generates images (~$0.01/image)
+- Claude marks exactly 3 pages with `has_illustration: true`
+- Each illustrated page features a different character
+- Illustrations spread across story (early, middle, late)
+- Replicate Flux Schnell generates images (~$0.01/image, 3 per story)
 - Style prefix: "Children's storybook illustration, soft watercolor style, warm colors, whimsical and magical"
-- Images generated in batches of 4 (parallel) to avoid API overload
-- If Replicate fails: PDF generated without illustrations (decorative text-only)
+- All 3 images generated in parallel (single Promise.all)
+- If Replicate fails: PDF generated without illustrations (text-only)
 
 ## Token Budgets (do NOT lower)
 

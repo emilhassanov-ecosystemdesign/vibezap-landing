@@ -194,6 +194,8 @@ function drawStoryPage(doc, page, illustration, pageNum, totalPages) {
   // Story text
   const textMargin = 60;
   const textWidth = doc.page.width - 2 * textMargin;
+  const footerReserve = 45;
+  const availableHeight = doc.page.height - currentY - doc.page.margins.bottom - footerReserve;
 
   doc
     .fontSize(13)
@@ -204,6 +206,8 @@ function drawStoryPage(doc, page, illustration, pageNum, totalPages) {
       align: "left",
       lineGap: 6,
       paragraphGap: 12,
+      height: availableHeight,
+      ellipsis: true,
     });
 
   // Footer

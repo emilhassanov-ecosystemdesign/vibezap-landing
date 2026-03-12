@@ -168,17 +168,19 @@ IMPORTANT RULES:
 - Write for a ${age}-year-old: use age-appropriate vocabulary and sentence complexity
 - Feature "${childName}" as the main character by name
 - Weave their interests (${interests}) naturally into the story
-- Write exactly 8 story pages (each page = 2-3 paragraphs)
-- Each page should have a clear scene that can be illustrated
+- Write exactly 8 story pages (each page = 2-3 paragraphs, 80-100 words max per page)
+- Keep text concise — each page must fit on a small A5 PDF page
 - Build a satisfying story arc: introduction → rising action → climax → resolution
 - End with a warm, satisfying conclusion
 - Make it magical, heartfelt, and engaging
 
-For each page, also write an illustration prompt. CRITICAL RULE: Each character/creature must appear in ONLY ONE illustration. This means:
-- The protagonist (${childName}) should appear in exactly 1 illustration
-- Each supporting character/creature appears in exactly 1 illustration
-- Other illustrations should focus on settings, objects, or atmospheric scenes
-- This ensures visual variety across all pages
+ILLUSTRATION RULES — exactly 3 pages get character illustrations:
+- The story must have 3 distinct characters (e.g. protagonist, companion/sidekick, and one other key character like a creature, mentor, or villain)
+- Mark exactly 3 pages with "has_illustration": true — one for each character
+- Each illustrated page features ONE character as the focus of the illustration
+- Spread illustrations across the story: one in pages 1-3, one in pages 4-6, one in pages 7-8
+- Only include "illustration_prompt" for pages with "has_illustration": true
+- The illustration_prompt should describe the character in detail (appearance, clothing, expression, pose) plus the scene context
 
 Return ONLY a JSON object (no markdown, no backticks):
 {
@@ -187,14 +189,20 @@ Return ONLY a JSON object (no markdown, no backticks):
   "pages": [
     {
       "page_number": 1,
-      "text": "<2-3 paragraphs of story for this page>",
-      "illustration_prompt": "<detailed scene description for image generation — describe the scene, colors, mood, and any characters present>",
-      "illustration_focus": "<one of: protagonist, companion, creature, villain, setting, magical-object, action-scene, climax>"
+      "text": "<2-3 paragraphs of story for this page, 80-100 words max>",
+      "has_illustration": false
+    },
+    {
+      "page_number": 2,
+      "text": "<2-3 paragraphs of story for this page, 80-100 words max>",
+      "has_illustration": true,
+      "illustration_prompt": "<detailed character portrait + scene description for image generation>",
+      "illustration_character": "<name or role of the character featured>"
     }
   ]
 }
 
-Each illustration_focus value must be UNIQUE across all 8 pages.`;
+Exactly 3 of the 8 pages must have "has_illustration": true. The other 5 must have "has_illustration": false with no illustration_prompt.`;
 }
 
 // ── Quality gate ────────────────────────────────────────────────────
@@ -213,6 +221,10 @@ function checkStoryQuality(parsed) {
     if (!page.text || page.text.length < 50) {
       return `Page ${page.page_number} has insufficient text`;
     }
+  }
+  const illustratedCount = parsed.pages.filter(p => p.has_illustration).length;
+  if (illustratedCount < 2 || illustratedCount > 4) {
+    return `Expected 3 illustrated pages, got ${illustratedCount}`;
   }
   return null;
 }
@@ -476,26 +488,23 @@ export async function POST(request) {
         if (replicateToken) {
           sseEvent(controller, "progress", { stage: "illustrating", message: "Painting illustrations..." });
 
-          // Generate illustrations in parallel (batches of 4 to avoid overload)
-          const pages = parsed.pages;
-          for (let i = 0; i < pages.length; i += 4) {
-            const batch = pages.slice(i, i + 4);
-            const results = await Promise.all(
-              batch.map(page =>
-                generateIllustration(page.illustration_prompt, replicateToken)
-              )
-            );
-            results.forEach((imgBuffer, idx) => {
-              const pageNum = pages[i + idx].page_number;
-              if (imgBuffer) {
-                illustrations[pageNum] = imgBuffer;
-              }
-            });
-            sseEvent(controller, "progress", {
-              stage: "illustrating",
-              message: `Painting illustrations... (${Math.min(i + 4, pages.length)}/${pages.length})`,
-            });
-          }
+          // Generate illustrations only for the 3 character pages
+          const illustratedPages = parsed.pages.filter(p => p.has_illustration && p.illustration_prompt);
+          const results = await Promise.all(
+            illustratedPages.map(page =>
+              generateIllustration(page.illustration_prompt, replicateToken)
+            )
+          );
+          results.forEach((imgBuffer, idx) => {
+            const pageNum = illustratedPages[idx].page_number;
+            if (imgBuffer) {
+              illustrations[pageNum] = imgBuffer;
+            }
+          });
+          sseEvent(controller, "progress", {
+            stage: "illustrating",
+            message: `Painted ${Object.keys(illustrations).length} of ${illustratedPages.length} character illustrations`,
+          });
 
           console.log("[kids-story-report] Illustrations generated:", {
             total: pages.length,

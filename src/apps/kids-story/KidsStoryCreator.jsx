@@ -312,7 +312,7 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
             fontSize: 14, color: THEME.textMuted, lineHeight: 1.6,
             maxWidth: 420, margin: '0 auto 24px',
           }}>
-            The complete story includes 8–10 illustrated pages, a personalized cover
+            The complete story includes 8 story pages with 3 unique character illustrations, a personalized cover
             with {childName || 'your child'}'s name, and a beautifully formatted downloadable PDF.
           </p>
 
@@ -321,8 +321,8 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
             marginBottom: 28,
           }}>
             {[
-              { icon: '📖', text: '8–10 pages' },
-              { icon: '🎨', text: 'Illustrated' },
+              { icon: '📖', text: '8 story pages' },
+              { icon: '🎨', text: '3 character illustrations' },
               { icon: '📄', text: 'PDF download' },
               { icon: '💌', text: 'Email delivery' },
             ].map((feature, i) => (

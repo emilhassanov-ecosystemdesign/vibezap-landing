@@ -88,12 +88,11 @@ vibezap-landing/
 |---|------|-------|-----|--------|-------|
 | 1 | Roast My Website | `/roast` | `/api/roast` | **Live** | Free / $5 full report |
 | 2 | Am I Being Scammed? | `/scam-check` | `/api/scam-check` | **Live** | Free / $3 full report |
-| 3 | Screenshot → Mockup | `/mockup` | `/api/mockup` | **Live** | Free / $2.99 |
-| 4 | TLDR Contract | `/tldr-contract` | — | Planned | $3 |
-| 5 | 365 Social Posts | `/social-posts` | — | Planned | $15 |
-| 6 | Vibe Check Email | `/vibe-check` | — | Planned | $2 |
-| 7 | Brand Kit in a Box | `/brand-kit` | — | Planned | $15 |
-| 8 | Kids Story Creator | `/kids-story` | `/api/kids-story` | **Live** | Free preview / $3 full illustrated PDF |
+| 3 | TLDR Contract | `/tldr-contract` | — | Planned | $3 |
+| 4 | 365 Social Posts | `/social-posts` | — | Planned | $15 |
+| 5 | Vibe Check Email | `/vibe-check` | — | Planned | $2 |
+| 6 | Brand Kit in a Box | `/brand-kit` | — | Planned | $15 |
+| 7 | Kids Story Creator | `/kids-story` | `/api/kids-story` | **Live** | Free preview / $3 full illustrated PDF |
 
 ## Critical Rules — Follow These Every Time
 

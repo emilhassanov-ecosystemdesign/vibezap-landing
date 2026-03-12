@@ -8,7 +8,7 @@ Step-by-step guide for adding a new tool to VibeZap.dev.
 mkdir src/apps/<tool-name>
 ```
 
-Use kebab-case for the folder name (e.g., `scam-check`, `screenshot-mockup`).
+Use kebab-case for the folder name (e.g., `scam-check`, `kids-story`).
 
 ## 2. Create the Component
 

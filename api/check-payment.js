@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   const { product, after } = req.query;
 
-  if (!product || !["roast", "scam", "land", "mockup", "kids-story"].includes(product)) {
+  if (!product || !["roast", "scam", "land", "kids-story"].includes(product)) {
     return res.status(400).json({ error: "Invalid product parameter" });
   }
 
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Not configured" });
   }
 
-  const expectedTotal = product === "roast" ? 500 : product === "land" ? 700 : product === "mockup" ? 299 : product === "kids-story" ? 300 : 300;
+  const expectedTotal = product === "roast" ? 500 : product === "land" ? 700 : product === "kids-story" ? 300 : 300;
   // Add 30-second buffer to handle clock skew
   const afterTime = after
     ? new Date(after).getTime() - 30000

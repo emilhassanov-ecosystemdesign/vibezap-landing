@@ -5,7 +5,6 @@ import VibeZapLanding from './VibeZapLanding'
 import RoastMyWebsite from './apps/roast-my-website/RoastMyWebsite'
 import ScamCheck from './apps/scam-check/ScamCheck'
 import LandDesign from './apps/land-design/LandDesign'
-import ScreenshotMockup from './apps/screenshot-mockup/ScreenshotMockup'
 import KidsStoryCreator from './apps/kids-story/KidsStoryCreator'
 import { liveApps } from './config/apps'
 
@@ -13,7 +12,6 @@ const componentMap = {
   "roast": RoastMyWebsite,
   "scam-check": ScamCheck,
   "land-design": LandDesign,
-  "mockup": ScreenshotMockup,
   "kids-story": KidsStoryCreator,
 };
 

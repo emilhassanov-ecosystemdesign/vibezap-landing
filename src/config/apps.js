@@ -30,16 +30,7 @@ const apps = [
     description: "Enter your location and describe your land. Get an AI-powered permaculture design with plant lists, water management, and implementation timeline.",
     price: "Free",
   },
-  {
-    id: "mockup",
-    status: "coming_soon",
-    route: "/mockup",
-    icon: "\uD83D\uDCF1",
-    title: "Screenshot \u2192 Mockup",
-    description: "Paste any URL. Get it placed in a gorgeous device mockup \u2014 phones, laptops, tablets. Download instantly.",
-    price: "Free / $2.99",
-  },
-  {
+{
     id: "kids-story",
     status: "coming_soon",
     route: "/kids-story",

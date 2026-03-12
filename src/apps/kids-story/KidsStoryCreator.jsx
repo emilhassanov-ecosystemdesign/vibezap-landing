@@ -915,6 +915,8 @@ export default function KidsStoryCreator() {
                       backgroundPosition: 'right 14px center',
                       paddingRight: 36,
                     }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(255,217,61,0.3)'}
+                    onBlur={e => e.target.style.borderColor = THEME.border}
                   >
                     <option value="" disabled>Age</option>
                     {AGES.map(a => (
@@ -937,6 +939,8 @@ export default function KidsStoryCreator() {
                       backgroundPosition: 'right 14px center',
                       paddingRight: 36,
                     }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(255,217,61,0.3)'}
+                    onBlur={e => e.target.style.borderColor = THEME.border}
                   >
                     {STORY_STYLES.map(s => (
                       <option key={s.value} value={s.value}>

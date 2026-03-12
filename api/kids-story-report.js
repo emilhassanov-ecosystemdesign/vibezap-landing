@@ -296,8 +296,8 @@ export async function POST(request) {
     );
   }
 
-  // Verify payment ($9 = 900 cents)
-  const orderCheck = await verifyOrder(orderId, lsApiKey, 900);
+  // Verify payment ($3 = 300 cents)
+  const orderCheck = await verifyOrder(orderId, lsApiKey, 300);
   if (!orderCheck.valid) {
     return new Response(
       JSON.stringify({ error: `Payment could not be verified: ${orderCheck.reason}` }),

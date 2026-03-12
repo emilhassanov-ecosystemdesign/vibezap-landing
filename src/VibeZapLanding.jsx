@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { apps, liveApps } from "./config/apps";
 
 /* --- BRAND TOKENS --- */
 const brand = {
@@ -91,21 +92,22 @@ function Reveal({ children, delay = 0, style = {} }) {
 }
 
 /* --- TOOL CARD --- */
-function ToolCard({ icon, title, description, price, tag, tagColor, delay, link }) {
+function ToolCard({ icon, title, description, price, tag, tagColor, delay, link, status }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
+  const isComingSoon = status === "coming_soon";
   return (
     <Reveal delay={delay}>
       <div
-        onClick={() => link && navigate(link)}
-        onMouseEnter={() => setHovered(true)}
+        onClick={() => !isComingSoon && link && navigate(link)}
+        onMouseEnter={() => !isComingSoon && setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
           background: hovered ? brand.surfaceLight : brand.surface,
           border: `1px solid ${hovered ? brand.borderHover : brand.border}`,
           borderRadius: "20px",
           padding: "32px 28px",
-          cursor: "pointer",
+          cursor: isComingSoon ? "default" : "pointer",
           transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
           transform: hovered ? "translateY(-4px)" : "translateY(0)",
           boxShadow: hovered ? `0 20px 60px rgba(0,0,0,0.4), 0 0 40px ${brand.cyanDim}` : "none",
@@ -114,43 +116,44 @@ function ToolCard({ icon, title, description, price, tag, tagColor, delay, link 
           height: "100%",
           display: "flex",
           flexDirection: "column",
+          opacity: isComingSoon ? 0.5 : 1,
         }}
       >
         {/* Glow accent */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "1px",
-            background: hovered
-              ? `linear-gradient(90deg, transparent, ${brand.cyan}, transparent)`
-              : "transparent",
-            transition: "all 0.4s ease",
-          }}
-        />
+        {!isComingSoon && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "1px",
+              background: hovered
+                ? `linear-gradient(90deg, transparent, ${brand.cyan}, transparent)`
+                : "transparent",
+              transition: "all 0.4s ease",
+            }}
+          />
+        )}
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
-          <span style={{ fontSize: "32px" }}>{icon}</span>
-          {tag && (
-            <span
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: "10px",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                color: tagColor || brand.cyan,
-                background: tagColor ? `${tagColor}18` : brand.cyanDim,
-                padding: "4px 10px",
-                borderRadius: "100px",
-                border: `1px solid ${tagColor ? `${tagColor}30` : "rgba(0,229,255,0.15)"}`,
-              }}
-            >
-              {tag}
-            </span>
-          )}
+          <span style={{ fontSize: "32px", filter: isComingSoon ? "grayscale(100%)" : "none" }}>{icon}</span>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "10px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "2px",
+              color: isComingSoon ? "#666" : (tagColor || brand.cyan),
+              background: isComingSoon ? "rgba(102,102,102,0.15)" : (tagColor ? `${tagColor}18` : brand.cyanDim),
+              padding: "4px 10px",
+              borderRadius: "100px",
+              border: `1px solid ${isComingSoon ? "rgba(102,102,102,0.3)" : (tagColor ? `${tagColor}30` : "rgba(0,229,255,0.15)")}`,
+            }}
+          >
+            {isComingSoon ? "Coming Soon" : (tag || "Live")}
+          </span>
         </div>
 
         <h3
@@ -185,24 +188,26 @@ function ToolCard({ icon, title, description, price, tag, tagColor, delay, link 
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: "14px",
               fontWeight: 700,
-              color: brand.cyan,
+              color: isComingSoon ? brand.faint : brand.cyan,
             }}
           >
             {price}
           </span>
-          <span
-            style={{
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: "13px",
-              color: hovered ? brand.cyan : brand.faint,
-              transition: "color 0.3s ease",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            Try it <span style={{ transition: "transform 0.3s ease", display: "inline-block", transform: hovered ? "translateX(3px)" : "none" }}>&rarr;</span>
-          </span>
+          {!isComingSoon && (
+            <span
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: "13px",
+                color: hovered ? brand.cyan : brand.faint,
+                transition: "color 0.3s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              Try it <span style={{ transition: "transform 0.3s ease", display: "inline-block", transform: hovered ? "translateX(3px)" : "none" }}>&rarr;</span>
+            </span>
+          )}
         </div>
       </div>
     </Reveal>
@@ -297,80 +302,7 @@ export default function VibeZapLanding() {
     }
   };
 
-  const tools = [
-    {
-      icon: "\uD83D\uDD25",
-      title: "Roast My Website",
-      description: "Drop any URL and get a brutally honest, AI-powered roast of the design, copy, UX, and trust signals. Shareable results included.",
-      price: "Free / $5 full report",
-      tag: "Live",
-      tagColor: "#4ade80",
-      link: "/roast",
-    },
-    {
-      icon: "\uD83D\uDEE1\uFE0F",
-      title: "Am I Being Scammed?",
-      description: "Paste any suspicious email, text, or DM. Get an instant scam probability score with red flags and recommended actions.",
-      price: "Free / $3 full report",
-      tag: "Live",
-      tagColor: "#4ade80",
-      link: "/scam-check",
-    },
-    {
-      icon: "\uD83C\uDF31",
-      title: "Land Design Generator",
-      description: "Enter your location and describe your land. Get an AI-powered permaculture design with plant lists, water management, and implementation timeline.",
-      price: "Free",
-      tag: "Live",
-      tagColor: "#4ade80",
-      link: "/land-design",
-    },
-    {
-      icon: "\uD83D\uDCF1",
-      title: "Screenshot \u2192 Mockup",
-      description: "Paste any URL. Get it placed in a gorgeous device mockup \u2014 phones, laptops, tablets. Download instantly.",
-      price: "Free / $2.99",
-      tag: "Live",
-      tagColor: "#4ade80",
-      link: "/mockup",
-    },
-    {
-      icon: "\uD83D\uDCDC",
-      title: "TLDR Contract",
-      description: "Paste any legal document and get a plain-English summary with red flags highlighted. Never sign confused again.",
-      price: "$3",
-      tag: "Coming Soon",
-    },
-    {
-      icon: "\uD83D\uDCC5",
-      title: "365 Social Posts",
-      description: "Enter your niche and get a full year of social media content ideas with hooks, CTAs, and posting schedule as a spreadsheet.",
-      price: "$15",
-      tag: "Coming Soon",
-    },
-    {
-      icon: "\u2709\uFE0F",
-      title: "Vibe Check Email",
-      description: "Paste your draft email and discover if it sounds passive-aggressive, desperate, or just right. Get a rewrite that nails the tone.",
-      price: "$2",
-      tag: "Coming Soon",
-    },
-    {
-      icon: "\uD83C\uDFA8",
-      title: "Brand Kit in a Box",
-      description: "Enter your business name and vibe. Get logo concepts, color palette, font pairing, social templates, and a brand guidelines PDF.",
-      price: "$15",
-      tag: "Coming Soon",
-    },
-    {
-      icon: "\uD83D\uDCD6",
-      title: "Kids Story Creator",
-      description: "Enter your child\u2019s name, interests, and a moral. Get a personalized illustrated children\u2019s story as a beautiful PDF.",
-      price: "$9",
-      tag: "Live",
-      link: "/kids-story",
-    },
-  ];
+  const liveIds = useMemo(() => new Set(liveApps.map(a => a.id)), []);
 
   return (
     <>
@@ -680,9 +612,20 @@ export default function VibeZapLanding() {
               display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
               gap: "20px",
             }}>
-              {tools.map((tool, i) => (
-                <ToolCard key={i} {...tool} delay={i * 100} />
-              ))}
+              {apps.map((app, i) => {
+                const effectiveStatus = liveIds.has(app.id) ? "live" : "coming_soon";
+                return (
+                  <ToolCard
+                    key={app.id}
+                    {...app}
+                    status={effectiveStatus}
+                    tag={effectiveStatus === "live" ? "Live" : "Coming Soon"}
+                    tagColor={effectiveStatus === "live" ? "#4ade80" : null}
+                    link={effectiveStatus === "live" ? app.route : null}
+                    delay={i * 100}
+                  />
+                );
+              })}
             </div>
           </div>
         </section>

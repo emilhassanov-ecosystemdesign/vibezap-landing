@@ -3,7 +3,7 @@
 ## Route: /kids-story
 ## API: /api/kids-story (free), /api/kids-story-report (paid)
 ## Status: Live
-## Price: Free preview / $9 full illustrated PDF
+## Price: Free preview / $3 full illustrated PDF
 
 ## What It Does
 Creates personalized children's stories starring the user's child. Users enter their child's name, age, interests, and an optional moral/lesson. The AI generates a story preview (free) or a full illustrated PDF storybook (paid).
@@ -12,7 +12,7 @@ Creates personalized children's stories starring the user's child. Users enter t
 1. User enters child's name, age, interests, optional moral, and story style
 2. Clicks "Create Story" — free preview generates (2-3 paragraphs)
 3. Preview displayed with child's name highlighted
-4. User sees upsell: "Get Full Illustrated Story — $9"
+4. User sees upsell: "Get Full Illustrated Story — $3"
 5. Payment via LemonSqueezy → SSE stream: story generation → illustration generation → PDF → email
 
 ## API Details
@@ -31,7 +31,7 @@ Creates personalized children's stories starring the user's child. Users enter t
 - **Output:** SSE events: progress, story, pdf, email, error
 - **Model:** claude-sonnet-4-20250514 (story) + Replicate Flux Schnell (illustrations)
 - **max_tokens:** 8000
-- **Payment:** $9 (900 cents) via LemonSqueezy
+- **Payment:** $3 (300 cents) via LemonSqueezy
 - **Timeout:** 120s (Vercel)
 
 ## Illustration Strategy

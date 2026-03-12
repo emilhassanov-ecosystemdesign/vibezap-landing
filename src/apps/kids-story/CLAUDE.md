@@ -4,7 +4,7 @@
 
 ## What This App Does
 
-User enters their child's name, age, interests, and optional moral. AI generates a personalized story preview (free) or full illustrated PDF storybook (paid, $9). Illustrations generated via Replicate Flux Schnell with one-character-per-scene strategy for visual consistency.
+User enters their child's name, age, interests, and optional moral. AI generates a personalized story preview (free) or full illustrated PDF storybook (paid, $3). Illustrations generated via Replicate Flux Schnell with one-character-per-scene strategy for visual consistency.
 
 ## Expected JSON Shapes
 
@@ -88,6 +88,6 @@ api/
 ## Payment Model
 
 - **Free preview:** Unlimited (5/hour rate limit)
-- **Full illustrated story:** $9 via LemonSqueezy
-- **Payment verification:** `verifyOrder()` checks total=900 cents
+- **Full illustrated story:** $3 via LemonSqueezy
+- **Payment verification:** `verifyOrder()` checks total=300 cents
 - **Vercel timeout:** 120s (image generation is slow)

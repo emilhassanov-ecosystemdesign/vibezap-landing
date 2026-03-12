@@ -6,16 +6,22 @@
 // ═══════════════════════════════════════════════════════════════════
 
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
+const N8N_WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET;
 
 /**
  * POST to n8n webhook. Returns a promise so callers can await it.
  * Never throws — catches errors internally.
+ * Sends Authorization header so n8n can reject unauthorized callers.
  */
 async function sendToN8n(payload) {
   if (!N8N_WEBHOOK_URL) return;
+  const headers = { "Content-Type": "application/json" };
+  if (N8N_WEBHOOK_SECRET) {
+    headers["Authorization"] = `Bearer ${N8N_WEBHOOK_SECRET}`;
+  }
   await fetch(N8N_WEBHOOK_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
   }).catch((err) => console.error("[n8n-logger]", err.message));
 }

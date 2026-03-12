@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Not configured" });
   }
 
-  const expectedTotal = product === "roast" ? 500 : product === "land" ? 700 : product === "mockup" ? 299 : product === "kids-story" ? 900 : 300;
+  const expectedTotal = product === "roast" ? 500 : product === "land" ? 700 : product === "mockup" ? 299 : product === "kids-story" ? 300 : 300;
   // Add 30-second buffer to handle clock skew
   const afterTime = after
     ? new Date(after).getTime() - 30000

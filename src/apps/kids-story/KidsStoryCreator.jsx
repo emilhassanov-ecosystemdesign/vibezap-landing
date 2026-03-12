@@ -363,7 +363,7 @@ function StoryDisplay({ result, childName, paymentProcessing, pdfGenerating, pdf
                 e.target.style.boxShadow = `0 4px 24px ${THEME.accentGlow}`
               }}
             >
-              Get Full Story — $9
+              Get Full Story — $3
             </button>
           )}
 

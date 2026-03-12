@@ -507,7 +507,7 @@ export async function POST(request) {
           });
 
           console.log("[kids-story-report] Illustrations generated:", {
-            total: pages.length,
+            total: illustratedPages.length,
             successful: Object.keys(illustrations).length,
           });
         } else {
